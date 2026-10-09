@@ -78,19 +78,28 @@ export const Dashboard = ({
 
   let taxDaysLeft = null;
   if (activeVehicle?.taxDueDate) {
-    const today = new Date();
-    const dueDate = new Date(activeVehicle.taxDueDate);
-    const diffTime = dueDate - today;
-    taxDaysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    try {
+      const today = new Date();
+      const dueDate = new Date(activeVehicle.taxDueDate);
+      if (!isNaN(dueDate.getTime())) {
+        const diffTime = dueDate - today;
+        taxDaysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+    } catch (e) {
+      taxDaysLeft = null;
+    }
   }
 
-  const activeVehicleInspections = inspections.filter(
+  const overdueVehicles = vehicles.filter(v => v.status === 'overdue');
+  const dueSoonVehicles = vehicles.filter(v => v.status === 'due_soon');
+
+  const activeVehicleInspections = (inspections || []).filter(
     i => i.vehicleId === activeVehicle?.id || i.plate === activeVehicle?.plate
   );
   const lastInspection = activeVehicleInspections[0];
 
   // Recent Mileage Logs
-  const activeMileageLogs = mileageLogs.filter(
+  const activeMileageLogs = (mileageLogs || []).filter(
     m => m.vehicleId === activeVehicle?.id || m.plate === activeVehicle?.plate
   );
 
@@ -290,7 +299,7 @@ export const Dashboard = ({
                   )}
                 </div>
                 <span className="text-[10px] text-slate-400 block truncate">
-                  {lastInspection ? `${lastInspection.inspectionDate.split(' ')[0]} (ผ่าน ${lastInspection.passedCount} ข้อ)` : 'แตะเพื่อเริ่มตรวจ'}
+                  {lastInspection ? `${String(lastInspection.inspectionDate || '').slice(0, 10)} (ผ่าน ${lastInspection.passedCount || 0} ข้อ)` : 'แตะเพื่อเริ่มตรวจ'}
                 </span>
               </div>
 
@@ -462,7 +471,7 @@ export const Dashboard = ({
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
                   <span>{log.purpose || 'การเดินทางทั่วไป'}</span>
-                  <span>{log.date}</span>
+                  <span>{log.date ? String(log.date).replace('T', ' ').slice(0, 16) : ''}</span>
                 </div>
                 {log.fuelCostBaht > 0 && (
                   <div className="text-[10px] text-amber-700 font-medium">
