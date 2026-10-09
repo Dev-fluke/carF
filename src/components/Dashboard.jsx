@@ -34,30 +34,56 @@ export const Dashboard = ({
   onServiceVehicle
 }) => {
   const [selectedVehicleIndex, setSelectedVehicleIndex] = useState(0);
+
+  // If no vehicles yet, show a beautiful welcoming empty state
+  if (vehicles.length === 0) {
+    return (
+      <div className="max-w-md mx-auto space-y-5 py-8 text-center pb-24 md:pb-8">
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-sm space-y-5">
+          <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto shadow-xs">
+            <Car className="w-10 h-10" />
+          </div>
+          
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-extrabold text-slate-900">
+              ยินดีต้อนรับสู่ My Garage 🚗🏍️
+            </h2>
+            <p className="text-xs text-slate-500">
+              เริ่มต้นใช้งานสมุดบันทึกดูแลรักษารถยนต์และมอเตอร์ไซค์ส่วนตัว เพิ่มรถคันแรกของคุณได้เลยครับ
+            </p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              onClick={onOpenAddVehicle}
+              className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-98 text-white font-extrabold text-sm shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ เพิ่มรถคันแรก (รถยนต์ / มอเตอร์ไซค์)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const activeVehicle = vehicles[selectedVehicleIndex] || vehicles[0];
-
-  // Overdue / Due soon vehicles
-  const overdueVehicles = vehicles.filter(v => v.status === 'overdue');
-  const dueSoonVehicles = vehicles.filter(v => v.status === 'due_soon');
-
-  // Active vehicle stats
   const isBike = activeVehicle ? isMotorcycleType(activeVehicle.type) : false;
-  const currentKm = Number(activeVehicle?.currentMileage || 0);
-  const lastKm = Number(activeVehicle?.lastServiceMileage || 0);
+  const currentKm = Number(activeVehicle?.currentMileage || activeVehicle?.mileage || 0);
   const intervalKm = Number(activeVehicle?.serviceIntervalKm || (isBike ? 4000 : 10000));
-  const nextKm = Number(activeVehicle?.nextServiceMileage || (lastKm + intervalKm));
+  const nextKm = Number(activeVehicle?.nextServiceMileage || (currentKm + intervalKm));
+  const lastKm = Number(activeVehicle?.lastServiceMileage || Math.max(0, nextKm - intervalKm));
   const remainingKm = nextKm - currentKm;
-  const progress = Math.min(100, Math.max(0, Math.round(((currentKm - lastKm) / intervalKm) * 100)));
+  const progress = Math.min(100, Math.max(0, ((currentKm - lastKm) / intervalKm) * 100));
 
-  // Calculate days until tax due
   let taxDaysLeft = null;
   if (activeVehicle?.taxDueDate) {
     const today = new Date();
     const dueDate = new Date(activeVehicle.taxDueDate);
-    taxDaysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+    const diffTime = dueDate - today;
+    taxDaysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
-  // Last inspection for active vehicle
   const activeVehicleInspections = inspections.filter(
     i => i.vehicleId === activeVehicle?.id || i.plate === activeVehicle?.plate
   );

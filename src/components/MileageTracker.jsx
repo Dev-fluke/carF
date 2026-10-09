@@ -130,6 +130,22 @@ export const MileageTracker = ({
     }
   };
 
+  if (vehicles.length === 0) {
+    return (
+      <div className="max-w-md mx-auto space-y-4 py-8 text-center pb-24 md:pb-8">
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-4">
+          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
+            <Gauge className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-extrabold text-slate-900">ยังไม่มีรถในระบบ</h3>
+            <p className="text-xs text-slate-500">กรุณาเพิ่มรถยนต์หรือมอเตอร์ไซค์ในโรงรถก่อนเริ่มบันทึกเลขไมล์ครับ</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-20 md:pb-6">
       

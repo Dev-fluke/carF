@@ -1,11 +1,42 @@
 import { INITIAL_VEHICLES, INITIAL_INSPECTIONS, INITIAL_MILEAGE_LOGS } from '../data/mockData';
 
 const STORAGE_KEYS = {
-  VEHICLES: 'via_vehicles_v1',
-  INSPECTIONS: 'via_inspections_v1',
-  MILEAGE_LOGS: 'via_mileage_logs_v1',
-  GAS_CONFIG: 'via_gas_config_v1',
-  MAINTENANCE_LOGS: 'via_maintenance_logs_v1'
+  VEHICLES: 'mg_vehicles_v2',
+  INSPECTIONS: 'mg_inspections_v2',
+  MILEAGE_LOGS: 'mg_mileage_logs_v2',
+  GAS_CONFIG: 'mg_gas_config_v2',
+  MAINTENANCE_LOGS: 'mg_maintenance_logs_v2'
+};
+
+// Migrate or get gas config
+export const getGasConfig = () => {
+  let data = localStorage.getItem(STORAGE_KEYS.GAS_CONFIG);
+  if (!data) {
+    // Try migrate from v1 if exists
+    const oldData = localStorage.getItem('via_gas_config_v1');
+    if (oldData) {
+      data = oldData;
+      localStorage.setItem(STORAGE_KEYS.GAS_CONFIG, oldData);
+    }
+  }
+
+  if (!data) {
+    return {
+      webAppUrl: '',
+      folderName: 'VehicleInspectionApp_Uploads',
+      isConnected: false,
+      lastSyncTime: null
+    };
+  }
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return { webAppUrl: '', folderName: 'VehicleInspectionApp_Uploads', isConnected: false };
+  }
+};
+
+export const saveGasConfig = (config) => {
+  localStorage.setItem(STORAGE_KEYS.GAS_CONFIG, JSON.stringify(config));
 };
 
 export const getVehicles = () => {
@@ -30,7 +61,6 @@ export const addOrUpdateVehicle = (vehicle) => {
   const vehicles = getVehicles();
   const index = vehicles.findIndex((v) => v.id === vehicle.id);
   
-  // Calculate maintenance status
   const updatedVehicle = calculateVehicleStatus(vehicle);
   
   let newVehicles;
@@ -73,7 +103,6 @@ export const addInspection = (inspection) => {
   const updated = [inspection, ...inspections];
   saveInspections(updated);
   
-  // Also update vehicle current mileage if provided
   if (inspection.vehicleId && inspection.mileage) {
     updateVehicleMileage(inspection.vehicleId, inspection.mileage, inspection.inspectorName);
   }
@@ -146,7 +175,6 @@ export const calculateVehicleStatus = (vehicle) => {
   let status = 'normal';
   const remainingKm = nextTargetKm - current;
 
-  // Check date-based due status if nextServiceDate is set
   let dateOverdue = false;
   let dateDueSoon = false;
   if (vehicle.nextServiceDate) {
@@ -181,7 +209,6 @@ export const recordVehicleService = (vehicleId, serviceData) => {
       const intervalKm = Number(v.serviceIntervalKm || 10000);
       const newNextMileage = newLastMileage + intervalKm;
       
-      // Calculate next service date (e.g. +6 months)
       const serviceDate = serviceData.serviceDate ? new Date(serviceData.serviceDate) : new Date();
       const intervalMonths = Number(v.serviceIntervalMonths || 6);
       const nextDate = new Date(serviceDate);
@@ -204,23 +231,13 @@ export const recordVehicleService = (vehicleId, serviceData) => {
   return updated;
 };
 
-export const getGasConfig = () => {
-  const data = localStorage.getItem(STORAGE_KEYS.GAS_CONFIG);
-  if (!data) {
-    return {
-      webAppUrl: '',
-      folderName: 'VehicleInspectionApp_Uploads',
-      isConnected: false,
-      lastSyncTime: null
-    };
-  }
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    return { webAppUrl: '', folderName: 'VehicleInspectionApp_Uploads', isConnected: false };
-  }
-};
-
-export const saveGasConfig = (config) => {
-  localStorage.setItem(STORAGE_KEYS.GAS_CONFIG, JSON.stringify(config));
+export const clearAllLocalData = () => {
+  saveVehicles([]);
+  saveInspections([]);
+  saveMileageLogs([]);
+  // Also clean old v1 keys if any
+  localStorage.removeItem('via_vehicles_v1');
+  localStorage.removeItem('via_inspections_v1');
+  localStorage.removeItem('via_mileage_logs_v1');
+  return { vehicles: [], inspections: [], mileageLogs: [] };
 };

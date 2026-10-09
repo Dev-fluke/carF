@@ -12,10 +12,11 @@ import {
   HelpCircle, 
   FileCode, 
   FolderPlus,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { testGoogleAppsScriptConnection, fetchGoogleSheetsData } from '../services/googleService';
-import { saveGasConfig } from '../services/storageService';
+import { saveGasConfig, clearAllLocalData } from '../services/storageService';
 
 const SAMPLE_GAS_CODE = `/**
  * Google Apps Script Backend (Code.gs)
@@ -137,6 +138,17 @@ export const GoogleSheetsModal = ({
     saveGasConfig(newConfig);
     if (onConfigUpdated) onConfigUpdated(newConfig);
     onClose();
+  };
+
+  const handleClearCache = () => {
+    if (window.confirm('คุณต้องการล้างข้อมูลแคชในเครื่องทั้งหมด (รถ, ประวัติการตรวจ, บันทึกไมล์) เพื่อเริ่มต้นใหม่หรือไม่?')) {
+      clearAllLocalData();
+      if (onSyncComplete) {
+        onSyncComplete({ vehicles: [], inspections: [], mileageLogs: [] });
+      }
+      alert('ล้างข้อมูลในเครื่องเรียบร้อยแล้ว');
+      onClose();
+    }
   };
 
   const handleCopyCode = () => {
@@ -263,15 +275,27 @@ export const GoogleSheetsModal = ({
 
             {/* Actions */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleSyncData}
-                disabled={!url || isSyncing}
-                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>ดึงข้อมูลจาก Sheets (Sync)</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSyncData}
+                  disabled={!url || isSyncing}
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>ดึงข้อมูลจาก Sheets (Sync)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearCache}
+                  className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition flex items-center gap-1"
+                  title="ล้างข้อมูลรถและประวัติการตรวจในเครื่อง"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>ล้างข้อมูลในเครื่อง</span>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button

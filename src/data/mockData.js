@@ -23,80 +23,8 @@ export const isMotorcycleType = (type = '') => {
   );
 };
 
-export const INITIAL_VEHICLES = [
-  {
-    id: 'veh-1',
-    nickname: 'น้องซิตี้ (รถใช้ประจำวัน)',
-    plate: '3ขง 1234',
-    province: 'กรุงเทพมหานคร',
-    brand: 'Honda',
-    model: 'City e:HEV RS',
-    type: 'รถเก๋ง (Sedan / Hatchback)',
-    year: '2023',
-    color: 'เทาเมทัลลิก',
-    photoUrl: 'https://images.unsplash.com/photo-1590362891988-f7761733a661?w=800&auto=format&fit=crop&q=80',
-    currentMileage: 22400,
-    lastServiceMileage: 20000,
-    serviceIntervalKm: 10000,
-    nextServiceMileage: 30000,
-    lastServiceDate: '2024-08-01',
-    serviceIntervalMonths: 6,
-    nextServiceDate: '2025-02-01',
-    taxDueDate: '2025-03-15',
-    insuranceDueDate: '2025-03-15',
-    fuelType: 'ไฮบริด/เบนซิน (Gasoline/Hybrid)',
-    status: 'normal',
-    notes: 'รถยนต์ส่วนตัว ขับไปทำงานและเดินทางต่างจังหวัด'
-  },
-  {
-    id: 'veh-2',
-    nickname: 'เวฟคู่ใจ (ใช้ในซอย/ไปตลาด)',
-    plate: '1กข 7788',
-    province: 'กรุงเทพมหานคร',
-    brand: 'Honda',
-    model: 'Wave 110i LED',
-    type: 'รถจักรยานยนต์ (Motorcycle)',
-    year: '2023',
-    color: 'แดง-ดำ',
-    photoUrl: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&auto=format&fit=crop&q=80',
-    currentMileage: 8450,
-    lastServiceMileage: 4000,
-    serviceIntervalKm: 4000,
-    nextServiceMileage: 8000,
-    lastServiceDate: '2024-06-15',
-    serviceIntervalMonths: 4,
-    nextServiceDate: '2024-10-15',
-    taxDueDate: '2025-05-20',
-    insuranceDueDate: '2025-05-20',
-    fuelType: 'เบนซิน 95 / E20',
-    status: 'overdue', // 8,450 > 8,000 km
-    notes: 'มอเตอร์ไซค์คันโปรด ขี่คล่องตัว ประหยัดน้ำมัน'
-  },
-  {
-    id: 'veh-3',
-    nickname: 'พี่ยักษ์ (รถครอบครัว/ลุยเที่ยว)',
-    plate: '1กข 4589',
-    province: 'กรุงเทพมหานคร',
-    brand: 'Toyota',
-    model: 'Hilux Revo Double Cab',
-    type: 'รถกระบะ (Pickup)',
-    year: '2022',
-    color: 'ขาวมุก',
-    photoUrl: 'https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=800&auto=format&fit=crop&q=80',
-    currentMileage: 49200,
-    lastServiceMileage: 40000,
-    serviceIntervalKm: 10000,
-    nextServiceMileage: 50000,
-    lastServiceDate: '2024-07-10',
-    serviceIntervalMonths: 6,
-    nextServiceDate: '2025-01-10',
-    taxDueDate: '2024-11-30',
-    insuranceDueDate: '2024-11-30',
-    fuelType: 'ดีเซล (Diesel)',
-    status: 'due_soon', // เหลือ 800 กม.
-    notes: 'ใช้งานขนของ ท่องเที่ยวต่างจังหวัด'
-  }
-];
+// เริ่มต้นด้วยข้อมูลว่างเปล่า พร้อมสำหรับเริ่มต้นใช้งานจริง
+export const INITIAL_VEHICLES = [];
 
 // รายการตรวจสภาพสำหรับ "รถยนต์ทั่วไป" (Personal Car Checklist)
 export const CAR_INSPECTION_CATEGORIES = [
@@ -224,115 +152,11 @@ export const getInspectionCategories = (vehicleType = '') => {
     : CAR_INSPECTION_CATEGORIES;
 };
 
-export const INITIAL_INSPECTIONS = [
-  {
-    id: 'insp-101',
-    vehicleId: 'veh-1',
-    plate: '3ขง 1234',
-    vehicleType: 'รถเก๋ง (Sedan / Hatchback)',
-    vehicleBrandModel: 'Honda City e:HEV RS',
-    inspectorName: 'เจ้าของรถ (ฉันเอง)',
-    inspectionDate: '2024-10-09 08:30',
-    mileage: 22400,
-    overallResult: 'PASS',
-    passedCount: 16,
-    warningCount: 0,
-    failedCount: 0,
-    notes: 'เช็คสภาพก่อนออกเดินทางไปทำงาน รถสมบูรณ์พร้อมใช้',
-    defectPhotos: [],
-    items: {
-      fluid_oil: 'pass',
-      fluid_coolant: 'pass',
-      fluid_brake: 'pass',
-      fluid_washer: 'pass',
-      fluid_battery: 'pass',
-      tire_pressure: 'pass',
-      tire_tread: 'pass',
-      wheel_nuts: 'pass',
-      brake_system: 'pass',
-      light_head: 'pass',
-      light_signal: 'pass',
-      light_tail_brake: 'pass',
-      horn: 'pass',
-      wipers: 'pass',
-      mirrors: 'pass',
-      ac_system: 'pass',
-      dash_warning: 'pass',
-      tax_insurance: 'pass',
-      spare_tire: 'pass',
-      dashcam: 'pass'
-    }
-  },
-  {
-    id: 'insp-102',
-    vehicleId: 'veh-2',
-    plate: '1กข 7788',
-    vehicleType: 'รถจักรยานยนต์ (Motorcycle)',
-    vehicleBrandModel: 'Honda Wave 110i LED',
-    inspectorName: 'เจ้าของรถ (ฉันเอง)',
-    inspectionDate: '2024-10-08 17:00',
-    mileage: 8450,
-    overallResult: 'WARNING',
-    passedCount: 16,
-    warningCount: 1,
-    failedCount: 0,
-    notes: 'โซ่เริ่มหย่อนเล็กน้อย ควรหยอดน้ำมันโซ่ และเลยรอบถ่ายน้ำมันเครื่องแล้ว',
-    defectPhotos: [],
-    items: {
-      mc_oil: 'warning',
-      mc_coolant: 'pass',
-      mc_battery_start: 'pass',
-      mc_air_filter: 'pass',
-      mc_chain_belt: 'warning',
-      mc_tire_front: 'pass',
-      mc_tire_rear: 'pass',
-      mc_suspension: 'pass',
-      mc_brake_front: 'pass',
-      mc_brake_rear: 'pass',
-      mc_throttle_clutch: 'pass',
-      mc_handlebar_steering: 'pass',
-      mc_stands: 'pass',
-      mc_light_head: 'pass',
-      mc_light_signals: 'pass',
-      mc_light_tail_brake: 'pass',
-      mc_horn: 'pass',
-      mc_mirrors: 'pass',
-      mc_helmet_gear: 'pass',
-      mc_tax_insurance: 'pass'
-    }
-  }
-];
+// เริ่มต้นว่างเปล่า
+export const INITIAL_INSPECTIONS = [];
 
-export const INITIAL_MILEAGE_LOGS = [
-  {
-    id: 'mile-1',
-    vehicleId: 'veh-1',
-    plate: '3ขง 1234',
-    driverName: 'เจ้าของรถ',
-    date: '2024-10-09 18:30',
-    startMileage: 22320,
-    endMileage: 22400,
-    distanceKm: 80,
-    purpose: 'ขับไป-กลับที่ทำงาน (อโศก - บางนา)',
-    fuelAddedLiters: 0,
-    fuelCostBaht: 0,
-    notes: 'ขับขี่ประหยัดน้ำมัน 24 กม./ลิตร'
-  },
-  {
-    id: 'mile-2',
-    vehicleId: 'veh-2',
-    plate: '1กข 7788',
-    driverName: 'เจ้าของรถ',
-    date: '2024-10-09 12:15',
-    startMileage: 8430,
-    endMileage: 8450,
-    distanceKm: 20,
-    purpose: 'ขี่ไปซื้อของตลาดและธุระแถวบ้าน',
-    fuelAddedLiters: 3.2,
-    fuelCostBaht: 120,
-    notes: 'เติมน้ำมันเบนซิน 95 เต็มถัง'
-  }
-];
+// เริ่มต้นว่างเปล่า
+export const INITIAL_MILEAGE_LOGS = [];
 
 export const MAINTENANCE_TYPES = [
   { id: 'oil_change', name: 'เปลี่ยนถ่ายน้ำมันเครื่อง & ไส้กรอง', intervalKm: 10000, intervalMonths: 6, icon: 'Droplet' },
