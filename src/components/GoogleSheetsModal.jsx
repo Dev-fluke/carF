@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Cloud, 
   CloudOff, 
@@ -13,7 +13,8 @@ import {
   FileCode, 
   FolderPlus,
   Loader2,
-  Trash2
+  Trash2,
+  Save
 } from 'lucide-react';
 import { testGoogleAppsScriptConnection, fetchGoogleSheetsData } from '../services/googleService';
 import { saveGasConfig, clearAllLocalData } from '../services/storageService';
@@ -71,17 +72,72 @@ export const GoogleSheetsModal = ({
   onConfigUpdated,
   onSyncComplete
 }) => {
-  const [url, setUrl] = useState(config.webAppUrl || '');
+  const [url, setUrl] = useState(config?.webAppUrl || '');
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [activeTab, setActiveTab] = useState('settings'); // settings | guide | code
 
+  // Synchronize URL when config changes or modal opens
+  useEffect(() => {
+    if (config?.webAppUrl) {
+      setUrl(config.webAppUrl);
+    }
+  }, [config?.webAppUrl, isOpen]);
+
   if (!isOpen) return null;
 
+  const persistUrl = (newUrl) => {
+    const cleanUrl = (newUrl !== undefined ? newUrl : url).trim();
+    const newConfig = {
+      ...config,
+      webAppUrl: cleanUrl,
+      isConnected: cleanUrl.length > 0,
+      lastSyncTime: new Date().toISOString()
+    };
+    saveGasConfig(newConfig);
+    if (onConfigUpdated) onConfigUpdated(newConfig);
+    return cleanUrl;
+  };
+
+  const handleSaveAndSync = async () => {
+    const cleanUrl = persistUrl();
+    if (!cleanUrl) {
+      setTestResult({ success: false, message: 'กรุณากรอก Google Apps Script Web App URL' });
+      return;
+    }
+
+    setIsSyncing(true);
+    setTestResult({ success: true, message: '💾 บันทึก URL ลงเครื่องเรียบร้อยแล้ว กำลังดึงข้อมูลจาก Google Sheets...' });
+
+    try {
+      const data = await fetchGoogleSheetsData(cleanUrl);
+      setIsSyncing(false);
+      if (data && data.success) {
+        setTestResult({ 
+          success: true, 
+          message: `✅ เชื่อมต่อและดึงข้อมูลสำเร็จ! (พบรถ ${data.vehicles?.length || 0} คัน, ประวัติตรวจ ${data.inspections?.length || 0} รายการ)` 
+        });
+        if (onSyncComplete) onSyncComplete(data);
+      } else {
+        setTestResult({
+          success: false,
+          message: 'บันทึก URL แล้ว แต่ดึงข้อมูลไม่สำเร็จ: ' + (data.error || 'โปรดตรวจสอบสิทธิ์ Anyone ใน Apps Script')
+        });
+      }
+    } catch (err) {
+      setIsSyncing(false);
+      setTestResult({
+        success: false,
+        message: 'บันทึก URL แล้ว แต่พบปัญหาการเชื่อมต่อ: ' + err.message
+      });
+    }
+  };
+
   const handleTestConnection = async () => {
-    if (!url.trim()) {
+    const cleanUrl = persistUrl();
+    if (!cleanUrl) {
       setTestResult({ success: false, message: 'กรุณากรอก Web App URL' });
       return;
     }
@@ -89,55 +145,21 @@ export const GoogleSheetsModal = ({
     setIsTesting(true);
     setTestResult(null);
 
-    const result = await testGoogleAppsScriptConnection(url.trim());
+    const result = await testGoogleAppsScriptConnection(cleanUrl);
     setIsTesting(false);
     setTestResult(result);
 
     if (result.success) {
-      const newConfig = {
-        ...config,
-        webAppUrl: url.trim(),
-        isConnected: true,
-        lastSyncTime: new Date().toISOString()
-      };
-      saveGasConfig(newConfig);
-      if (onConfigUpdated) onConfigUpdated(newConfig);
-
-      // Automatically fetch all vehicles and logs from Google Sheets
+      // Auto sync data
       try {
-        const data = await fetchGoogleSheetsData(url.trim());
+        const data = await fetchGoogleSheetsData(cleanUrl);
         if (data && data.success && onSyncComplete) {
           onSyncComplete(data);
         }
       } catch (err) {
-        console.warn('Auto sync on connect error:', err);
+        console.warn('Auto sync on test error:', err);
       }
     }
-  };
-
-  const handleSyncData = async () => {
-    if (!url.trim()) return;
-    setIsSyncing(true);
-    const data = await fetchGoogleSheetsData(url.trim());
-    setIsSyncing(false);
-
-    if (data && data.success) {
-      alert(`ดึงข้อมูลจาก Google Sheets สำเร็จ! (พบรถ ${data.vehicles?.length || 0} คัน)`);
-      if (onSyncComplete) onSyncComplete(data);
-    } else {
-      alert('ไม่สามารถดึงข้อมูลได้: ' + (data.error || 'โปรดตรวจสอบการเชื่อมต่อ'));
-    }
-  };
-
-  const handleSaveOnly = () => {
-    const newConfig = {
-      ...config,
-      webAppUrl: url.trim(),
-      isConnected: url.trim().length > 0
-    };
-    saveGasConfig(newConfig);
-    if (onConfigUpdated) onConfigUpdated(newConfig);
-    onClose();
   };
 
   const handleClearCache = () => {
@@ -253,7 +275,11 @@ export const GoogleSheetsModal = ({
               <input
                 type="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  persistUrl(e.target.value);
+                }}
+                onBlur={() => persistUrl(url)}
                 placeholder="https://script.google.com/macros/s/.../exec"
                 className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
@@ -278,31 +304,28 @@ export const GoogleSheetsModal = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleSyncData}
+                  onClick={handleSaveAndSync}
                   disabled={!url || isSyncing}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50 shadow-md shadow-blue-600/20"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>ดึงข้อมูลจาก Sheets (Sync)</span>
+                  {isSyncing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>กำลังดึงข้อมูล...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>บันทึก & ดึงข้อมูล (Sync)</span>
+                    </>
+                  )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleClearCache}
-                  className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition flex items-center gap-1"
-                  title="ล้างข้อมูลรถและประวัติการตรวจในเครื่อง"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>ล้างข้อมูลในเครื่อง</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleTestConnection}
                   disabled={isTesting || !url}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {isTesting ? (
                     <>
@@ -311,10 +334,22 @@ export const GoogleSheetsModal = ({
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>ทดสอบ & บันทึก</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>ทดสอบเชื่อมต่อ</span>
                     </>
                   )}
+                </button>
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={handleClearCache}
+                  className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold border border-red-200 transition flex items-center gap-1"
+                  title="ล้างข้อมูลรถและประวัติการตรวจในเครื่อง"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>ล้างข้อมูลในเครื่อง</span>
                 </button>
               </div>
             </div>

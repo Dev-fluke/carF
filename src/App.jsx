@@ -20,10 +20,10 @@ import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | inspect | mileage | maintenance | vehicles | history
-  const [vehicles, setVehicles] = useState([]);
-  const [inspections, setInspections] = useState([]);
-  const [mileageLogs, setMileageLogs] = useState([]);
-  const [gasConfig, setGasConfig] = useState({ webAppUrl: '', isConnected: false });
+  const [vehicles, setVehicles] = useState(() => getVehicles());
+  const [inspections, setInspections] = useState(() => getInspections());
+  const [mileageLogs, setMileageLogs] = useState(() => getMileageLogs());
+  const [gasConfig, setGasConfig] = useState(() => getGasConfig());
 
   // Navigation context states
   const [selectedVehicleForInspect, setSelectedVehicleForInspect] = useState(null);
@@ -44,11 +44,9 @@ export function App() {
   };
 
   useEffect(() => {
-    refreshData();
-
     // Auto background sync from Google Sheets if connected
     const config = getGasConfig();
-    if (config.webAppUrl) {
+    if (config?.webAppUrl) {
       fetchGoogleSheetsData(config.webAppUrl)
         .then((remoteData) => {
           if (remoteData && remoteData.success) {
