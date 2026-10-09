@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Car, 
+  Bike,
   AlertTriangle, 
   CheckCircle2, 
   Clock, 
@@ -12,8 +13,15 @@ import {
   Plus, 
   Wrench,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Fuel,
+  Sparkles,
+  FileText,
+  DollarSign,
+  ChevronRight
 } from 'lucide-react';
+import { VehicleIcon, getVehicleTypeBadge } from './VehicleIcon';
+import { isMotorcycleType } from '../data/mockData';
 
 export const Dashboard = ({ 
   vehicles = [], 
@@ -25,444 +33,420 @@ export const Dashboard = ({
   onInspectVehicle,
   onServiceVehicle
 }) => {
-  // Calculations
-  const totalVehicles = vehicles.length;
+  const [selectedVehicleIndex, setSelectedVehicleIndex] = useState(0);
+  const activeVehicle = vehicles[selectedVehicleIndex] || vehicles[0];
+
+  // Overdue / Due soon vehicles
   const overdueVehicles = vehicles.filter(v => v.status === 'overdue');
   const dueSoonVehicles = vehicles.filter(v => v.status === 'due_soon');
-  const normalVehicles = vehicles.filter(v => v.status === 'normal' || !v.status);
 
-  // Today's inspections
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayInspections = inspections.filter(i => (i.inspectionDate || '').startsWith(todayStr));
+  // Active vehicle stats
+  const isBike = activeVehicle ? isMotorcycleType(activeVehicle.type) : false;
+  const currentKm = Number(activeVehicle?.currentMileage || 0);
+  const lastKm = Number(activeVehicle?.lastServiceMileage || 0);
+  const intervalKm = Number(activeVehicle?.serviceIntervalKm || (isBike ? 4000 : 10000));
+  const nextKm = Number(activeVehicle?.nextServiceMileage || (lastKm + intervalKm));
+  const remainingKm = nextKm - currentKm;
+  const progress = Math.min(100, Math.max(0, Math.round(((currentKm - lastKm) / intervalKm) * 100)));
+
+  // Calculate days until tax due
+  let taxDaysLeft = null;
+  if (activeVehicle?.taxDueDate) {
+    const today = new Date();
+    const dueDate = new Date(activeVehicle.taxDueDate);
+    taxDaysLeft = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+  }
+
+  // Last inspection for active vehicle
+  const activeVehicleInspections = inspections.filter(
+    i => i.vehicleId === activeVehicle?.id || i.plate === activeVehicle?.plate
+  );
+  const lastInspection = activeVehicleInspections[0];
+
+  // Recent Mileage Logs
+  const activeMileageLogs = mileageLogs.filter(
+    m => m.vehicleId === activeVehicle?.id || m.plate === activeVehicle?.plate
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pb-20 md:pb-6">
       
-      {/* Top Banner / Welcome & Quick Actions */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-2xl p-6 text-white shadow-xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-medium border border-blue-500/30">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>ระบบตรวจเช็คสภาพยานพาหนะอัจฉริยะ</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            ศูนย์ควบคุมและติดตามสภาพรถยนต์
-          </h1>
-          <p className="text-slate-400 text-sm max-w-xl">
-            บันทึกการตรวจเช็คสภาพประจำวัน อัปเดตเลขไมล์ และระบบแจ้งเตือนเข้าศูนย์บริการอัตโนมัติ
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <button
-            onClick={() => onNavigate('inspect')}
-            className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-lg shadow-blue-600/30 transition active:scale-95"
-          >
-            <ClipboardCheck className="w-4 h-4" />
-            <span>เริ่มตรวจสภาพรถ</span>
-          </button>
-          <button
-            onClick={onOpenQuickMileage}
-            className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-600/30 transition active:scale-95"
-          >
-            <Gauge className="w-4 h-4" />
-            <span>กรอกเลขไมล์</span>
-          </button>
+      {/* Garage Vehicle Switcher Tabs (Mobile & Desktop) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            โรงรถของฉัน ({vehicles.length} คัน)
+          </span>
           <button
             onClick={onOpenAddVehicle}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition"
-            title="เพิ่มรถคันใหม่"
+            className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 active:scale-95 transition"
           >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">เพิ่มรถ</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>เพิ่มคันใหม่</span>
           </button>
         </div>
+
+        {/* Scrollable Vehicle Selector Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
+          {vehicles.map((v, idx) => {
+            const isSelected = idx === selectedVehicleIndex;
+            const isVBike = isMotorcycleType(v.type);
+            const hasAlert = v.status === 'overdue' || v.status === 'due_soon';
+
+            return (
+              <button
+                key={v.id}
+                onClick={() => setSelectedVehicleIndex(idx)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold shrink-0 transition-all border ${
+                  isSelected
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-102'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div className={`p-1 rounded-lg ${isSelected ? 'bg-slate-800 text-blue-400' : 'bg-slate-100 text-slate-600'}`}>
+                  {isVBike ? <Bike className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                </div>
+                <div className="text-left">
+                  <div className="leading-tight">{v.nickname || v.plate}</div>
+                  <div className={`text-[10px] font-normal ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                    {v.brand} {v.model}
+                  </div>
+                </div>
+
+                {hasAlert && (
+                  <span className={`w-2 h-2 rounded-full ${v.status === 'overdue' ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        
-        {/* Total Vehicles */}
-        <div 
-          onClick={() => onNavigate('vehicles')}
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-medium text-slate-500">รถทั้งหมดในระบบ</span>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition">
+      {/* Active Vehicle Spotlight Card (Mobile-Optimized Hero) */}
+      {activeVehicle && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
+          
+          {/* Top Banner with Image & Identity */}
+          <div className="relative aspect-[16/8] sm:aspect-[21/9] w-full bg-slate-900 overflow-hidden">
+            {activeVehicle.photoUrl ? (
+              <img 
+                src={activeVehicle.photoUrl} 
+                alt={activeVehicle.plate} 
+                className="w-full h-full object-cover opacity-90"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-800">
+                <VehicleIcon type={activeVehicle.type} className="w-16 h-16 opacity-40 mb-1" />
+                <span className="text-xs">ยังไม่มีรูปภาพ</span>
+              </div>
+            )}
+            
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+
+            {/* Badges on Top */}
+            <div className="absolute top-3 left-3 flex items-center gap-1.5">
+              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm backdrop-blur-md bg-white/95 ${
+                activeVehicle.status === 'overdue'
+                  ? 'text-red-700 bg-red-50/95 border-red-200 animate-pulse'
+                  : activeVehicle.status === 'due_soon'
+                  ? 'text-amber-700 bg-amber-50/95 border-amber-200'
+                  : 'text-emerald-700 bg-emerald-50/95 border-emerald-200'
+              }`}>
+                {activeVehicle.status === 'overdue' ? '⚠️ เกินระยะเปลี่ยนถ่าย' : activeVehicle.status === 'due_soon' ? '⏳ ใกล้ถึงรอบเช็ค' : '✓ สภาพปกติ'}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-md bg-white/90 text-slate-800">
+                {isBike ? '🏍️ มอเตอร์ไซค์' : '🚗 รถยนต์'}
+              </span>
+            </div>
+
+            {/* Bottom Info on Image */}
+            <div className="absolute bottom-3 left-3 right-3 text-white">
+              <div className="flex items-end justify-between gap-2">
+                <div>
+                  <h2 className="text-lg sm:text-2xl font-extrabold tracking-tight">
+                    {activeVehicle.nickname || `${activeVehicle.brand} ${activeVehicle.model}`}
+                  </h2>
+                  <p className="text-xs text-slate-300">
+                    ทะเบียน <strong className="text-white font-mono">{activeVehicle.plate}</strong> ({activeVehicle.province}) • {activeVehicle.fuelType}
+                  </p>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] text-slate-300 block">เลขไมล์ปัจจุบัน</span>
+                  <span className="text-lg sm:text-xl font-mono font-extrabold text-blue-300">
+                    {currentKm.toLocaleString()} <span className="text-xs font-normal">กม.</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Maintenance Progress & Tax Cards */}
+          <div className="p-4 sm:p-5 pt-0 space-y-4">
+            
+            {/* Oil Change / Service Interval Countdown Bar */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-700 flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5 text-blue-600" />
+                  <span>รอบเปลี่ยนถ่ายน้ำมันเครื่อง & เช็คระยะ</span>
+                </span>
+                <span className={`font-mono font-bold ${remainingKm <= 0 ? 'text-red-600' : remainingKm <= 1000 ? 'text-amber-600' : 'text-slate-700'}`}>
+                  {remainingKm <= 0 
+                    ? `เกินกำหนดแล้ว ${Math.abs(remainingKm).toLocaleString()} กม.` 
+                    : `เหลืออีก ${remainingKm.toLocaleString()} กม.`}
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    activeVehicle.status === 'overdue' ? 'bg-red-500' : activeVehicle.status === 'due_soon' ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>เปลี่ยนล่าสุด: {lastKm.toLocaleString()} กม.</span>
+                <span>เป้าหมาย: {nextKm.toLocaleString()} กม. (ทุก {intervalKm.toLocaleString()} กม.)</span>
+              </div>
+            </div>
+
+            {/* Quick Metrics: Tax/Insurance + Last Inspection Score */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              
+              {/* Tax & Insurance Badge */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  <span>ภาษีประจำปี & พ.ร.บ.</span>
+                </div>
+                <div className="font-extrabold text-slate-900 text-sm">
+                  {taxDaysLeft !== null ? (
+                    taxDaysLeft <= 0 ? (
+                      <span className="text-red-600">หมดอายุแล้ว!</span>
+                    ) : taxDaysLeft <= 30 ? (
+                      <span className="text-amber-600">เหลืออีก {taxDaysLeft} วัน</span>
+                    ) : (
+                      <span className="text-emerald-700">เหลืออีก {taxDaysLeft} วัน</span>
+                    )
+                  ) : (
+                    <span>กำหนด: มี.ค. 2568</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400 block">
+                  {activeVehicle.taxDueDate ? `ครบกำหนด ${activeVehicle.taxDueDate}` : 'พร้อมต่อภาษีประจำปี'}
+                </span>
+              </div>
+
+              {/* Last Inspection Score */}
+              <div 
+                onClick={() => onNavigate('history')}
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1 cursor-pointer hover:bg-slate-100 transition"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                    <ClipboardCheck className="w-3.5 h-3.5 text-blue-500" />
+                    <span>ตรวจสภาพล่าสุด</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-slate-400" />
+                </div>
+                <div className="font-extrabold text-slate-900 text-sm">
+                  {lastInspection ? (
+                    <span className={lastInspection.overallResult === 'PASS' ? 'text-emerald-600' : 'text-amber-600'}>
+                      {lastInspection.overallResult === 'PASS' ? '✓ ผ่านสมบูรณ์' : '⚠️ มีจุดควรซ่อม'}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500">ยังไม่เคยตรวจ</span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400 block truncate">
+                  {lastInspection ? `${lastInspection.inspectionDate.split(' ')[0]} (ผ่าน ${lastInspection.passedCount} ข้อ)` : 'แตะเพื่อเริ่มตรวจ'}
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* Quick Action Button Grid (Large Touch Targets for Mobile) */}
+      <div className="space-y-2">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
+          เมนูด่วนสำหรับคันนี้
+        </span>
+
+        <div className="grid grid-cols-2 gap-3">
+          
+          {/* 1. Inspect */}
+          <button
+            onClick={() => onInspectVehicle(activeVehicle)}
+            className="p-4 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-98 text-white shadow-lg shadow-blue-600/20 text-left transition flex flex-col justify-between h-28"
+          >
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+              <ClipboardCheck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="font-bold text-sm leading-tight">ตรวจสภาพรถ</div>
+              <div className="text-[11px] text-blue-100 mt-0.5">
+                {isBike ? 'เช็คโซ่ ยาง เบรก ไฟ' : 'เช็คของเหลว ยาง ไฟ แอร์'}
+              </div>
+            </div>
+          </button>
+
+          {/* 2. Fuel & Mileage */}
+          <button
+            onClick={() => onOpenQuickMileage(activeVehicle)}
+            className="p-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white shadow-lg shadow-emerald-600/20 text-left transition flex flex-col justify-between h-28"
+          >
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+              <Fuel className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="font-bold text-sm leading-tight">เติมน้ำมัน / ลงไมล์</div>
+              <div className="text-[11px] text-emerald-100 mt-0.5">
+                บันทึกเลขไมล์ & ค่าน้ำมัน
+              </div>
+            </div>
+          </button>
+
+          {/* 3. Service Log */}
+          <button
+            onClick={() => onServiceVehicle(activeVehicle)}
+            className="p-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-98 text-white shadow-md text-left transition flex flex-col justify-between h-28"
+          >
+            <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400">
+              <Wrench className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-bold text-sm leading-tight">บันทึกเข้าศูนย์</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                เปลี่ยนถ่ายของเหลว / ค่าซ่อม
+              </div>
+            </div>
+          </button>
+
+          {/* 4. My Garage Details */}
+          <button
+            onClick={() => onNavigate('vehicles')}
+            className="p-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 active:scale-98 text-slate-800 text-left transition flex flex-col justify-between h-28 shadow-xs"
+          >
+            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-blue-600">
               <Car className="w-5 h-5" />
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900">{totalVehicles}</span>
-            <span className="text-xs text-slate-500">คัน</span>
-          </div>
-          <div className="mt-2 text-xs text-blue-600 font-medium flex items-center gap-1">
-            <span>ดูข้อมูลรถทั้งหมด</span>
-            <ArrowRight className="w-3 h-3" />
-          </div>
-        </div>
-
-        {/* Overdue Maintenance */}
-        <div 
-          onClick={() => onNavigate('maintenance')}
-          className="bg-white p-5 rounded-2xl border border-red-200 shadow-sm hover:shadow-md transition cursor-pointer group relative overflow-hidden"
-        >
-          {overdueVehicles.length > 0 && (
-            <div className="absolute top-0 right-0 w-2 h-full bg-red-500" />
-          )}
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-medium text-slate-500">เกินกำหนดซ่อมบำรุง</span>
-            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition">
-              <AlertTriangle className="w-5 h-5" />
+            <div>
+              <div className="font-bold text-sm leading-tight">จัดการข้อมูลรถ</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                ดูรถทั้งหมดในบ้าน ({vehicles.length} คัน)
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className={`text-2xl sm:text-3xl font-extrabold ${overdueVehicles.length > 0 ? 'text-red-600' : 'text-slate-900'}`}>
-              {overdueVehicles.length}
-            </span>
-            <span className="text-xs text-slate-500">คัน (ต้องตรวจด่วน)</span>
-          </div>
-          <div className="mt-2 text-xs text-red-600 font-medium flex items-center gap-1">
-            <span>ดูรายการที่ต้องซ่อม</span>
-            <ArrowRight className="w-3 h-3" />
-          </div>
-        </div>
+          </button>
 
-        {/* Due Soon Maintenance */}
-        <div 
-          onClick={() => onNavigate('maintenance')}
-          className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm hover:shadow-md transition cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-medium text-slate-500">ใกล้ถึงรอบเช็คระยะ</span>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className={`text-2xl sm:text-3xl font-extrabold ${dueSoonVehicles.length > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-              {dueSoonVehicles.length}
-            </span>
-            <span className="text-xs text-slate-500">คัน (ใน 1,000 กม.)</span>
-          </div>
-          <div className="mt-2 text-xs text-amber-600 font-medium flex items-center gap-1">
-            <span>ดูตารางนัดหมาย</span>
-            <ArrowRight className="w-3 h-3" />
-          </div>
         </div>
-
-        {/* Ready / Inspected Today */}
-        <div 
-          onClick={() => onNavigate('history')}
-          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition cursor-pointer group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-medium text-slate-500">ตรวจสภาพวันนี้</span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900">{todayInspections.length}</span>
-            <span className="text-xs text-slate-500">ครั้ง (พร้อมใช้ {normalVehicles.length} คัน)</span>
-          </div>
-          <div className="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1">
-            <span>ดูประวัติตรวจสภาพ</span>
-            <ArrowRight className="w-3 h-3" />
-          </div>
-        </div>
-
       </div>
 
-      {/* Critical Maintenance Alert Banner (If Any Overdue or Due Soon) */}
+      {/* Critical Reminders Section (If any vehicle is overdue or due soon) */}
       {(overdueVehicles.length > 0 || dueSoonVehicles.length > 0) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-sm">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h3 className="text-base font-bold text-amber-900">
-                  แจ้งเตือนการบำรุงรักษา: มีรถ {overdueVehicles.length + dueSoonVehicles.length} คัน ถึงกำหนดหรือใกล้ถึงรอบเปลี่ยนถ่ายน้ำมันเครื่อง/เช็คระยะ
-                </h3>
-                <button
-                  onClick={() => onNavigate('maintenance')}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 hover:text-amber-950 underline"
-                >
-                  <span>จัดการตารางซ่อม</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
+          <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <span>รายการที่ต้องดูแลเป็นพิเศษ:</span>
+          </div>
 
-              {/* Badges of affected vehicles */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {overdueVehicles.map(v => (
-                  <div 
-                    key={v.id} 
-                    className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-red-200 text-xs shadow-xs"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                    <span className="font-bold text-slate-800">{v.plate}</span>
-                    <span className="text-slate-500 font-light">({v.brand} {v.model})</span>
-                    <span className="font-semibold text-red-600">เกิน {Math.abs((v.nextServiceMileage || 0) - (v.currentMileage || 0)).toLocaleString()} กม.</span>
-                    <button 
-                      onClick={() => onServiceVehicle(v)}
-                      className="px-2 py-0.5 rounded bg-red-100 hover:bg-red-200 text-red-700 font-medium text-[11px]"
-                    >
-                      บันทึกเข้าซ่อม
-                    </button>
+          <div className="space-y-2">
+            {overdueVehicles.map(v => (
+              <div 
+                key={v.id} 
+                onClick={() => onServiceVehicle(v)}
+                className="p-3 bg-white rounded-xl border border-red-200 shadow-2xs flex items-center justify-between gap-2 cursor-pointer"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                  <div className="truncate">
+                    <span className="font-bold text-xs text-slate-900">{v.nickname || v.plate}</span>
+                    <p className="text-[11px] text-red-600 font-medium">
+                      เกินระยะถ่ายน้ำมันเครื่อง {Math.abs((v.nextServiceMileage || 0) - (v.currentMileage || 0)).toLocaleString()} กม.
+                    </p>
                   </div>
-                ))}
-                {dueSoonVehicles.map(v => (
-                  <div 
-                    key={v.id} 
-                    className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-amber-200 text-xs shadow-xs"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    <span className="font-bold text-slate-800">{v.plate}</span>
-                    <span className="text-slate-500 font-light">({v.brand} {v.model})</span>
-                    <span className="font-semibold text-amber-700">เหลืออีก {(v.nextServiceMileage - v.currentMileage).toLocaleString()} กม.</span>
-                    <button 
-                      onClick={() => onServiceVehicle(v)}
-                      className="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-medium text-[11px]"
-                    >
-                      เช็คระยะ
-                    </button>
-                  </div>
-                ))}
+                </div>
+                <span className="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg shrink-0">
+                  บันทึกเข้าซ่อม
+                </span>
               </div>
-            </div>
+            ))}
+            {dueSoonVehicles.map(v => (
+              <div 
+                key={v.id}
+                onClick={() => onServiceVehicle(v)}
+                className="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs flex items-center justify-between gap-2 cursor-pointer"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                  <div className="truncate">
+                    <span className="font-bold text-xs text-slate-900">{v.nickname || v.plate}</span>
+                    <p className="text-[11px] text-amber-700">
+                      เหลืออีก {(v.nextServiceMileage - v.currentMileage).toLocaleString()} กม. ถึงรอบเช็ค
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-1 rounded-lg shrink-0">
+                  เช็คระยะ
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Main Grid: Vehicles Cards & Recent Inspection Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left 2 Cols: Vehicles Quick Status Cards */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Car className="w-5 h-5 text-slate-700" />
-              <h2 className="text-lg font-bold text-slate-900">สถานะยานพาหนะและระยะทาง</h2>
+      {/* Recent Trips & Fuel History for this Vehicle */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            ประวัติการใช้งาน & เติมน้ำมันล่าสุด
+          </span>
+          <button
+            onClick={() => onNavigate('mileage')}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+          >
+            ดูทั้งหมด
+          </button>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+          {activeMileageLogs.length === 0 ? (
+            <div className="text-center py-6 text-slate-400 text-xs">
+              <Fuel className="w-8 h-8 mx-auto mb-1 opacity-30" />
+              <span>ยังไม่มีประวัติการบันทึกเลขไมล์/เติมน้ำมัน</span>
             </div>
-            <button
-              onClick={() => onNavigate('vehicles')}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-            >
-              <span>ดูทั้งหมด ({vehicles.length})</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {vehicles.map((v) => {
-              const currentKm = v.currentMileage || 0;
-              const nextKm = v.nextServiceMileage || ((v.lastServiceMileage || 0) + (v.serviceIntervalKm || 10000));
-              const lastKm = v.lastServiceMileage || 0;
-              const progress = Math.min(100, Math.max(0, Math.round(((currentKm - lastKm) / (nextKm - lastKm || 10000)) * 100)));
-              
-              let badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-              let badgeText = 'สภาพปกติ';
-              if (v.status === 'overdue') {
-                badgeColor = 'bg-red-50 text-red-700 border-red-200 animate-pulse';
-                badgeText = 'เกินระยะเช็ค';
-              } else if (v.status === 'due_soon') {
-                badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
-                badgeText = 'ใกล้ถึงรอบเช็ค';
-              }
-
-              return (
-                <div 
-                  key={v.id} 
-                  className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Header with Photo & Plate */}
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-14 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
-                        {v.photoUrl ? (
-                          <img 
-                            src={v.photoUrl} 
-                            alt={v.plate} 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=400';
-                            }}
-                          />
-                        ) : (
-                          <Car className="w-6 h-6 text-slate-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-extrabold text-base text-slate-900 truncate">{v.plate}</span>
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
-                            {badgeText}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 font-medium truncate">{v.brand} {v.model}</p>
-                        <p className="text-[11px] text-slate-400 truncate">{v.type} • {v.assignedDriver || 'ไม่มีคนขับประจำ'}</p>
-                      </div>
-                    </div>
-
-                    {/* Mileage & Progress */}
-                    <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 flex items-center gap-1">
-                          <Gauge className="w-3.5 h-3.5 text-slate-400" />
-                          <span>เลขไมล์ปัจจุบัน:</span>
-                        </span>
-                        <span className="font-bold text-slate-800 font-mono text-sm">
-                          {Number(v.currentMileage || 0).toLocaleString()} <span className="text-[10px] font-normal text-slate-500">กม.</span>
-                        </span>
-                      </div>
-
-                      {/* Maintenance progress bar */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] text-slate-400">
-                          <span>รอบบริการ: {Number(nextKm).toLocaleString()} กม.</span>
-                          <span>{progress}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              v.status === 'overdue' ? 'bg-red-500' : v.status === 'due_soon' ? 'bg-amber-500' : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
-                    <button
-                      onClick={() => onInspectVehicle(v)}
-                      className="flex-1 py-1.5 px-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition flex items-center justify-center gap-1"
-                    >
-                      <ClipboardCheck className="w-3.5 h-3.5" />
-                      <span>ตรวจสภาพ</span>
-                    </button>
-                    <button
-                      onClick={() => onOpenQuickMileage(v)}
-                      className="py-1.5 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-1"
-                      title="อัปเดตเลขไมล์"
-                    >
-                      <Gauge className="w-3.5 h-3.5" />
-                      <span>ลงไมล์</span>
-                    </button>
-                    <button
-                      onClick={() => onServiceVehicle(v)}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                      title="บันทึกการเช็คระยะ"
-                    >
-                      <Wrench className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
+          ) : (
+            activeMileageLogs.slice(0, 3).map((log) => (
+              <div key={log.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-slate-900">
+                    {Number(log.endMileage).toLocaleString()} กม.
+                  </span>
+                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                    +{Number(log.distanceKm || 0).toLocaleString()} กม.
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right 1 Col: Recent Inspections & Activity Log */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ClipboardCheck className="w-5 h-5 text-slate-700" />
-              <h2 className="text-lg font-bold text-slate-900">ประวัติตรวจสภาพล่าสุด</h2>
-            </div>
-            <button
-              onClick={() => onNavigate('history')}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-            >
-              <span>ดูทั้งหมด</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
-            {inspections.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 text-sm">
-                <ClipboardCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <span>ยังไม่มีประวัติการตรวจสภาพรถ</span>
-              </div>
-            ) : (
-              inspections.slice(0, 5).map((insp) => {
-                let statusBadge = {
-                  color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                  icon: CheckCircle2,
-                  text: 'ผ่านสมบูรณ์'
-                };
-                if (insp.overallResult === 'WARNING') {
-                  statusBadge = {
-                    color: 'bg-amber-50 text-amber-700 border-amber-200',
-                    icon: AlertCircle,
-                    text: 'มีจุดควรซ่อม'
-                  };
-                } else if (insp.overallResult === 'FAIL') {
-                  statusBadge = {
-                    color: 'bg-red-50 text-red-700 border-red-200',
-                    icon: AlertTriangle,
-                    text: 'ไม่ผ่าน'
-                  };
-                }
-                const StatusIcon = statusBadge.icon;
-
-                return (
-                  <div 
-                    key={insp.id}
-                    onClick={() => onNavigate('history')}
-                    className="p-3 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-slate-900">{insp.plate}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusBadge.color}`}>
-                        <StatusIcon className="w-3 h-3" />
-                        <span>{statusBadge.text}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span>ผู้ตรวจ: {insp.inspectorName}</span>
-                      <span className="font-mono">{Number(insp.mileage || 0).toLocaleString()} กม.</span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                      <span>{insp.inspectionDate}</span>
-                      {insp.defectPhotos && insp.defectPhotos.length > 0 && (
-                        <span className="text-blue-600 font-medium">📷 มีรูปจุดชำรุด ({insp.defectPhotos.length})</span>
-                      )}
-                    </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>{log.purpose || 'การเดินทางทั่วไป'}</span>
+                  <span>{log.date}</span>
+                </div>
+                {log.fuelCostBaht > 0 && (
+                  <div className="text-[10px] text-amber-700 font-medium">
+                    ⛽ เติมน้ำมัน: {log.fuelAddedLiters} ลิตร ({log.fuelCostBaht} บาท)
                   </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Quick Mileage Log Mini Card */}
-          <div className="bg-gradient-to-br from-emerald-900 to-slate-900 text-white p-5 rounded-2xl shadow-sm space-y-3">
-            <div className="flex items-center gap-2">
-              <Gauge className="w-5 h-5 text-emerald-400" />
-              <h3 className="font-bold text-sm">บันทึกเลขไมล์วันนี้แล้วหรือยัง?</h3>
-            </div>
-            <p className="text-xs text-slate-300">
-              การอัปเดตเลขไมล์สม่ำเสมอจะช่วยให้ระบบแจ้งเตือนเข้าศูนย์บริการได้แม่นยำ ป้องกันเครื่องยนต์เสียหาย
-            </p>
-            <button
-              onClick={onOpenQuickMileage}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition shadow-sm"
-            >
-              + บันทึกเลขไมล์ทันที
-            </button>
-          </div>
-
+                )}
+              </div>
+            ))
+          )}
         </div>
-
       </div>
 
     </div>
