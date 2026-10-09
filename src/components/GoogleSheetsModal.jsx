@@ -101,17 +101,27 @@ export const GoogleSheetsModal = ({
       };
       saveGasConfig(newConfig);
       if (onConfigUpdated) onConfigUpdated(newConfig);
+
+      // Automatically fetch all vehicles and logs from Google Sheets
+      try {
+        const data = await fetchGoogleSheetsData(url.trim());
+        if (data && data.success && onSyncComplete) {
+          onSyncComplete(data);
+        }
+      } catch (err) {
+        console.warn('Auto sync on connect error:', err);
+      }
     }
   };
 
   const handleSyncData = async () => {
     if (!url.trim()) return;
     setIsSyncing(true);
-    const data = await fetchGoogleSheetsData();
+    const data = await fetchGoogleSheetsData(url.trim());
     setIsSyncing(false);
 
     if (data && data.success) {
-      alert('ดึงข้อมูลจาก Google Sheets สำเร็จ!');
+      alert(`ดึงข้อมูลจาก Google Sheets สำเร็จ! (พบรถ ${data.vehicles?.length || 0} คัน)`);
       if (onSyncComplete) onSyncComplete(data);
     } else {
       alert('ไม่สามารถดึงข้อมูลได้: ' + (data.error || 'โปรดตรวจสอบการเชื่อมต่อ'));

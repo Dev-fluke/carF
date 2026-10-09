@@ -8,6 +8,7 @@ import {
   saveInspections,
   saveMileageLogs
 } from './services/storageService';
+import { fetchGoogleSheetsData } from './services/googleService';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { InspectionForm } from './components/InspectionForm';
@@ -44,6 +45,18 @@ export function App() {
 
   useEffect(() => {
     refreshData();
+
+    // Auto background sync from Google Sheets if connected
+    const config = getGasConfig();
+    if (config.webAppUrl) {
+      fetchGoogleSheetsData(config.webAppUrl)
+        .then((remoteData) => {
+          if (remoteData && remoteData.success) {
+            handleSyncComplete(remoteData);
+          }
+        })
+        .catch((err) => console.warn('Background sync error:', err));
+    }
   }, []);
 
   // Compute maintenance alert count
