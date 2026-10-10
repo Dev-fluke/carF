@@ -445,9 +445,18 @@ export const VehiclesList = ({
                       <span>⛽ {vehicle.fuelType}</span>
                       <span>ปี {vehicle.year} • สี{vehicle.color}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[10px] text-amber-800 bg-amber-50/80 border border-amber-200/50 px-2.5 py-1 rounded-lg">
-                      <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>วันต่อภาษี/พ.ร.บ.: {vehicle.taxDueDate ? <strong>{formatThaiDate(vehicle.taxDueDate)}</strong> : <span className="text-slate-400 font-normal">ยังไม่ได้ระบุ</span>}</span>
+                    <div 
+                      onClick={() => handleOpenEditModal(vehicle)}
+                      className="flex items-center justify-between gap-1.5 text-[11px] text-amber-900 bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200/70 px-3 py-1.5 rounded-xl cursor-pointer transition active:scale-98"
+                      title="แตะเพื่อแก้ไขวันต่อภาษี/พ.ร.บ."
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span className="truncate">
+                          วันต่อภาษี/พ.ร.บ.: {vehicle.taxDueDate ? <strong className="text-amber-950 font-bold">{formatThaiDate(vehicle.taxDueDate)}</strong> : <span className="text-amber-700/80 underline font-semibold">แตะเพื่อระบุวัน</span>}
+                        </span>
+                      </div>
+                      <Edit className="w-3 h-3 text-amber-500 shrink-0 opacity-70" />
                     </div>
                   </div>
 
@@ -720,24 +729,46 @@ export const VehiclesList = ({
               </div>
 
               {/* Tax & Insurance Due Date */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700">วันต่อภาษี & พ.ร.บ.</label>
-                  <input
-                    type="date"
-                    value={taxDueDate}
-                    onChange={(e) => setTaxDueDate(e.target.value)}
-                    className="w-full p-2 rounded-xl border border-slate-300 text-xs bg-white outline-none"
-                  />
+              <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                  <FileText className="w-4 h-4 text-amber-600" />
+                  <span>วันต่อภาษีประจำปี, พ.ร.บ. & ประกันภัย</span>
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700">วันหมดอายุประกันภัย</label>
-                  <input
-                    type="date"
-                    value={insuranceDueDate}
-                    onChange={(e) => setInsuranceDueDate(e.target.value)}
-                    className="w-full p-2 rounded-xl border border-slate-300 text-xs bg-white outline-none"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-amber-950">
+                      วันต่อภาษี & พ.ร.บ.
+                    </label>
+                    <input
+                      type="date"
+                      value={taxDueDate}
+                      onChange={(e) => setTaxDueDate(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-amber-300 text-xs font-medium text-slate-900 bg-white shadow-xs focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                    {taxDueDate && (
+                      <span className="text-[11px] text-amber-800 font-bold block">
+                        🗓️ {formatThaiDate(taxDueDate)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      วันหมดอายุประกันภัย (ถ้ามี)
+                    </label>
+                    <input
+                      type="date"
+                      value={insuranceDueDate}
+                      onChange={(e) => setInsuranceDueDate(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 bg-white shadow-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    {insuranceDueDate && (
+                      <span className="text-[11px] text-slate-600 font-medium block">
+                        🗓️ {formatThaiDate(insuranceDueDate)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -255,10 +255,17 @@ export const Dashboard = ({
             <div className="grid grid-cols-2 gap-3 text-xs">
               
               {/* Tax & Insurance Badge */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-                <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-                  <FileText className="w-3.5 h-3.5 text-slate-400" />
-                  <span>ภาษีประจำปี & พ.ร.บ.</span>
+              <div 
+                onClick={() => onNavigate('vehicles')}
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1 cursor-pointer hover:bg-slate-100/80 transition"
+                title="แตะเพื่อดูหรือแก้ไขวันต่อภาษี"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                    <FileText className="w-3.5 h-3.5 text-slate-400" />
+                    <span>ภาษีประจำปี & พ.ร.บ.</span>
+                  </div>
+                  <ChevronRight className="w-3 h-3 text-slate-400" />
                 </div>
                 <div className="font-extrabold text-slate-900 text-sm">
                   {taxDaysLeft !== null ? (
@@ -270,11 +277,11 @@ export const Dashboard = ({
                       <span className="text-emerald-700">เหลืออีก {taxDaysLeft} วัน</span>
                     )
                   ) : (
-                    <span className="text-slate-400 font-medium text-xs">ยังไม่ได้ระบุวัน</span>
+                    <span className="text-amber-600 font-semibold text-xs underline">แตะเพื่อระบุวัน</span>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-400 block">
-                  {activeVehicle.taxDueDate ? `ครบกำหนด ${formatThaiDate(activeVehicle.taxDueDate)}` : 'พร้อมต่อภาษีประจำปี'}
+                <span className="text-[10px] text-slate-400 block truncate">
+                  {activeVehicle.taxDueDate ? `ครบกำหนด ${formatThaiDate(activeVehicle.taxDueDate)}` : 'แตะเพื่อตั้งวันต่อภาษี'}
                 </span>
               </div>
 
