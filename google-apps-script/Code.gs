@@ -127,9 +127,9 @@ function saveBase64ImageToDrive(base64Data, filenamePrefix) {
     var file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
-    // Direct viewable URL
+    // Direct viewable URL (High-resolution Google Drive CDN thumbnail)
     var fileId = file.getId();
-    var viewUrl = 'https://drive.google.com/uc?export=view&id=' + fileId;
+    var viewUrl = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1000';
     return viewUrl;
   } catch (err) {
     Logger.log('Drive Upload Error: ' + err.toString());
@@ -150,6 +150,24 @@ function handleAddOrUpdateVehicle(data) {
     photoUrl = saveBase64ImageToDrive(photoUrl, 'Vehicle_' + (vehicle.plate || 'plate').replace(/\s+/g, '_'));
   }
 
+  // Ensure header mapping
+  var headerValues = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var colMap = {};
+  for (var c = 0; c < headerValues.length; c++) {
+    colMap[String(headerValues[c]).trim()] = c + 1;
+  }
+
+  // Ensure new columns exist
+  var extraHeaders = ['วันต่อภาษี/พ.ร.บ.', 'วันหมดอายุประกัน', 'ชื่อเรียกรถ'];
+  for (var h = 0; h < extraHeaders.length; h++) {
+    var hName = extraHeaders[h];
+    if (!colMap[hName]) {
+      var nextCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, nextCol).setValue(hName);
+      colMap[hName] = nextCol;
+    }
+  }
+
   var values = sheet.getDataRange().getValues();
   var rowIndex = -1;
 
@@ -160,6 +178,9 @@ function handleAddOrUpdateVehicle(data) {
     }
   }
 
+  var targetRow = rowIndex > 0 ? rowIndex : sheet.getLastRow() + 1;
+
+  // Base 21 fields
   var rowData = [
     vehicle.id || ('veh-' + new Date().getTime()),
     vehicle.plate || '',
@@ -184,10 +205,17 @@ function handleAddOrUpdateVehicle(data) {
     Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM-dd HH:mm:ss')
   ];
 
-  if (rowIndex > 0) {
-    sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
-  } else {
-    sheet.appendRow(rowData);
+  sheet.getRange(targetRow, 1, 1, rowData.length).setValues([rowData]);
+
+  // Set taxDueDate, insuranceDueDate, nickname
+  if (colMap['วันต่อภาษี/พ.ร.บ.']) {
+    sheet.getRange(targetRow, colMap['วันต่อภาษี/พ.ร.บ.']).setValue(vehicle.taxDueDate || '');
+  }
+  if (colMap['วันหมดอายุประกัน']) {
+    sheet.getRange(targetRow, colMap['วันหมดอายุประกัน']).setValue(vehicle.insuranceDueDate || '');
+  }
+  if (colMap['ชื่อเรียกรถ']) {
+    sheet.getRange(targetRow, colMap['ชื่อเรียกรถ']).setValue(vehicle.nickname || '');
   }
 
   return {
@@ -380,7 +408,7 @@ function initSpreadsheetStructure() {
       'Vehicle ID', 'ทะเบียนรถ', 'จังหวัด', 'ยี่ห้อ', 'รุ่น', 'ประเภท', 'ปี', 'สี',
       'รูปรถ (Google Drive URL)', 'เลขไมล์ปัจจุบัน', 'เลขไมล์เช็คระยะล่าสุด', 'รอบเช็คระยะ (กม.)',
       'เป้าหมายเช็คระยะถัดไป (กม.)', 'วันที่เช็คระยะล่าสุด', 'รอบระยะเวลา (เดือน)', 'วันที่เช็คระยะถัดไป',
-      'คนขับประจำ', 'ประเภทเชื้อเพลิง', 'สถานะการซ่อมบำรุง', 'หมายเหตุ', 'อัปเดตล่าสุด'
+      'คนขับประจำ', 'ประเภทเชื้อเพลิง', 'สถานะการซ่อมบำรุง', 'หมายเหตุ', 'วันต่อภาษี/พ.ร.บ.', 'วันหมดอายุประกัน', 'ชื่อเรียกรถ', 'อัปเดตล่าสุด'
     ];
     vSheet.appendRow(vHeaders);
     formatHeaderRow(vSheet);

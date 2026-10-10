@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { VehicleIcon, getVehicleTypeBadge } from './VehicleIcon';
 import { isMotorcycleType } from '../data/mockData';
+import { getDirectImageUrl, formatThaiDate } from '../utils/imageUtils';
 
 export const Dashboard = ({ 
   vehicles = [], 
@@ -165,7 +166,7 @@ export const Dashboard = ({
           <div className="relative aspect-[16/8] sm:aspect-[21/9] w-full bg-slate-900 overflow-hidden">
             {activeVehicle.photoUrl ? (
               <img 
-                src={activeVehicle.photoUrl} 
+                src={getDirectImageUrl(activeVehicle.photoUrl)} 
                 alt={activeVehicle.plate} 
                 className="w-full h-full object-cover opacity-90"
               />
@@ -269,11 +270,11 @@ export const Dashboard = ({
                       <span className="text-emerald-700">เหลืออีก {taxDaysLeft} วัน</span>
                     )
                   ) : (
-                    <span>กำหนด: มี.ค. 2568</span>
+                    <span className="text-slate-400 font-medium text-xs">ยังไม่ได้ระบุวัน</span>
                   )}
                 </div>
                 <span className="text-[10px] text-slate-400 block">
-                  {activeVehicle.taxDueDate ? `ครบกำหนด ${activeVehicle.taxDueDate}` : 'พร้อมต่อภาษีประจำปี'}
+                  {activeVehicle.taxDueDate ? `ครบกำหนด ${formatThaiDate(activeVehicle.taxDueDate)}` : 'พร้อมต่อภาษีประจำปี'}
                 </span>
               </div>
 

@@ -107,7 +107,24 @@ export function App() {
 
   const handleSyncComplete = (remoteData) => {
     if (remoteData.vehicles && remoteData.vehicles.length > 0) {
-      saveVehicles(remoteData.vehicles);
+      const localVehicles = getVehicles();
+      const mergedVehicles = remoteData.vehicles.map((remoteVeh) => {
+        const localMatch = localVehicles.find(
+          (lv) => lv.id === remoteVeh.id || lv.plate === remoteVeh.plate
+        );
+        if (localMatch) {
+          return {
+            ...localMatch,
+            ...remoteVeh,
+            photoUrl: remoteVeh.photoUrl || localMatch.photoUrl || '',
+            taxDueDate: remoteVeh.taxDueDate || localMatch.taxDueDate || '',
+            insuranceDueDate: remoteVeh.insuranceDueDate || localMatch.insuranceDueDate || '',
+            nickname: remoteVeh.nickname || localMatch.nickname || remoteVeh.plate
+          };
+        }
+        return remoteVeh;
+      });
+      saveVehicles(mergedVehicles);
     }
     if (remoteData.inspections && remoteData.inspections.length > 0) {
       saveInspections(remoteData.inspections);

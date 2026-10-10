@@ -23,6 +23,17 @@ export const normalizeVehicleFromSheet = (raw) => {
   const plate = raw['ทะเบียนรถ'] || raw['plate'] || '';
   const nickname = raw['ชื่อเรียกรถ'] || raw['ฉายา'] || raw['nickname'] || (brand || model ? `${brand} ${model}`.trim() : plate);
 
+  // Parse taxDueDate and insuranceDueDate cleanly (handle ISO dates like 2026-10-08T17:00:00.000Z)
+  let taxDueDate = raw['วันต่อภาษี/พ.ร.บ.'] || raw['วันต่อภาษี'] || raw['taxDueDate'] || raw['taxDate'] || '';
+  if (taxDueDate && typeof taxDueDate === 'string') {
+    taxDueDate = taxDueDate.slice(0, 10);
+  }
+
+  let insuranceDueDate = raw['วันหมดอายุประกัน'] || raw['วันหมดอายุประกันภัย'] || raw['insuranceDueDate'] || '';
+  if (insuranceDueDate && typeof insuranceDueDate === 'string') {
+    insuranceDueDate = insuranceDueDate.slice(0, 10);
+  }
+
   return {
     id: String(raw['Vehicle ID'] || raw['id'] || `veh-${Date.now()}`),
     nickname: nickname,
@@ -33,7 +44,7 @@ export const normalizeVehicleFromSheet = (raw) => {
     type: raw['ประเภท'] || raw['type'] || 'รถเก๋ง (Sedan / Hatchback)',
     year: String(raw['ปี'] || raw['year'] || '2023'),
     color: raw['สี'] || raw['color'] || '',
-    photoUrl: raw['รูปรถ (Google Drive URL)'] || raw['photoUrl'] || '',
+    photoUrl: raw['รูปรถ (Google Drive URL)'] || raw['photoUrl'] || raw['รูปรถ'] || '',
     currentMileage: Number(raw['เลขไมล์ปัจจุบัน'] || raw['currentMileage'] || 0),
     lastServiceMileage: Number(raw['เลขไมล์เช็คระยะล่าสุด'] || raw['lastServiceMileage'] || 0),
     serviceIntervalKm: Number(raw['รอบเช็คระยะ (กม.)'] || raw['serviceIntervalKm'] || 10000),
@@ -41,8 +52,8 @@ export const normalizeVehicleFromSheet = (raw) => {
     lastServiceDate: raw['วันที่เช็คระยะล่าสุด'] || raw['lastServiceDate'] || '',
     serviceIntervalMonths: Number(raw['รอบระยะเวลา (เดือน)'] || raw['serviceIntervalMonths'] || 6),
     nextServiceDate: raw['วันที่เช็คระยะถัดไป'] || raw['nextServiceDate'] || '',
-    taxDueDate: raw['วันต่อภาษี/พ.ร.บ.'] || raw['taxDueDate'] || '',
-    insuranceDueDate: raw['วันหมดอายุประกัน'] || raw['insuranceDueDate'] || '',
+    taxDueDate: taxDueDate,
+    insuranceDueDate: insuranceDueDate,
     assignedDriver: raw['คนขับประจำ'] || raw['assignedDriver'] || '',
     fuelType: raw['ประเภทเชื้อเพลิง'] || raw['fuelType'] || 'เบนซิน 95 / E20',
     status: raw['สถานะการซ่อมบำรุง'] || raw['status'] || 'normal',

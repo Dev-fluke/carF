@@ -28,6 +28,12 @@ import { VEHICLE_TYPES, isMotorcycleType } from '../data/mockData';
 import { VehicleIcon, getVehicleTypeBadge } from './VehicleIcon';
 import { fileToBase64, callGoogleAppsScript } from '../services/googleService';
 import { addOrUpdateVehicle, deleteVehicle } from '../services/storageService';
+import { 
+  compressImage, 
+  getDirectImageUrl, 
+  formatDateForInput, 
+  formatThaiDate 
+} from '../utils/imageUtils';
 
 const BRAND_SUGGESTIONS = [
   'Honda',
@@ -83,6 +89,7 @@ export const VehiclesList = ({
   
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoFile, setPhotoFile] = useState(null);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [submitMessage, setSubmitMessage] = useState(null);
 
@@ -154,8 +161,8 @@ export const VehiclesList = ({
     setCurrentMileage(vehicle.currentMileage || 0);
     setServiceIntervalKm(vehicle.serviceIntervalKm || (isMotorcycleType(vehicle.type) ? 4000 : 10000));
     setServiceIntervalMonths(vehicle.serviceIntervalMonths || (isMotorcycleType(vehicle.type) ? 4 : 6));
-    setTaxDueDate(vehicle.taxDueDate || '');
-    setInsuranceDueDate(vehicle.insuranceDueDate || '');
+    setTaxDueDate(formatDateForInput(vehicle.taxDueDate));
+    setInsuranceDueDate(formatDateForInput(vehicle.insuranceDueDate));
     setNotes(vehicle.notes || '');
     setPhotoUrl(vehicle.photoUrl || '');
     setPhotoFile(null);
@@ -167,11 +174,21 @@ export const VehiclesList = ({
     const file = e.target.files[0];
     if (!file) return;
     setPhotoFile(file);
+    setIsProcessingPhoto(true);
     try {
-      const base64 = await fileToBase64(file);
-      setPhotoUrl(base64);
+      // Compress image client-side to lightweight ~80-120KB JPEG
+      const compressed = await compressImage(file, 1000, 0.75);
+      setPhotoUrl(compressed);
     } catch (err) {
-      console.error('Photo read error:', err);
+      console.error('Photo compress error:', err);
+      try {
+        const base64 = await fileToBase64(file);
+        setPhotoUrl(base64);
+      } catch (readErr) {
+        console.error('Fallback read error:', readErr);
+      }
+    } finally {
+      setIsProcessingPhoto(false);
     }
   };
 
@@ -198,6 +215,8 @@ export const VehiclesList = ({
     const intervalMonths = Number(serviceIntervalMonths) || (isMotorcycleType(type) ? 4 : 6);
     const lastServiceMileage = editingVehicle ? (editingVehicle.lastServiceMileage || 0) : 0;
     const nextServiceMileage = lastServiceMileage + intervalKm > curMileage ? lastServiceMileage + intervalKm : curMileage + intervalKm;
+    const cleanTaxDate = formatDateForInput(taxDueDate);
+    const cleanInsuranceDate = formatDateForInput(insuranceDueDate);
 
     const newVehicle = {
       id: vehicleId,
@@ -209,30 +228,36 @@ export const VehiclesList = ({
       type: type,
       year: year.trim(),
       color: color.trim(),
-      photoUrl: photoUrl,
+      photoUrl: photoUrl || '',
       currentMileage: curMileage,
       lastServiceMileage: lastServiceMileage,
       serviceIntervalKm: intervalKm,
       nextServiceMileage: nextServiceMileage,
       lastServiceDate: editingVehicle?.lastServiceDate || new Date().toISOString().split('T')[0],
       serviceIntervalMonths: intervalMonths,
-      taxDueDate: taxDueDate || '',
-      insuranceDueDate: insuranceDueDate || '',
+      taxDueDate: cleanTaxDate,
+      insuranceDueDate: cleanInsuranceDate,
       fuelType: fuelType,
       notes: notes.trim()
     };
 
     try {
-      // 1. Save to Local Storage
+      // 1. Save to Local Storage FIRST (Immediate local persistence)
       const updated = addOrUpdateVehicle(newVehicle);
+      if (onRefresh) onRefresh();
 
       // 2. Push to Google Apps Script (Google Sheets & Google Drive)
-      const gasResult = await callGoogleAppsScript('ADD_VEHICLE', {
-        vehicle: updated
-      });
+      try {
+        const gasResult = await callGoogleAppsScript('ADD_VEHICLE', {
+          vehicle: updated
+        });
 
-      if (gasResult && gasResult.photoUrl) {
-        addOrUpdateVehicle({ ...updated, photoUrl: gasResult.photoUrl });
+        if (gasResult && gasResult.photoUrl) {
+          addOrUpdateVehicle({ ...updated, photoUrl: gasResult.photoUrl });
+          if (onRefresh) onRefresh();
+        }
+      } catch (gasErr) {
+        console.warn('Google Apps Script background upload error:', gasErr);
       }
 
       setIsUploading(false);
@@ -244,7 +269,7 @@ export const VehiclesList = ({
       setTimeout(() => {
         setIsModalOpen(false);
         if (onRefresh) onRefresh();
-      }, 1000);
+      }, 700);
 
     } catch (err) {
       console.error('Vehicle save error:', err);
@@ -346,13 +371,10 @@ export const VehiclesList = ({
                 <div className="relative aspect-[16/9] w-full bg-slate-100 overflow-hidden border-b border-slate-100">
                   {vehicle.photoUrl ? (
                     <img 
-                      src={vehicle.photoUrl} 
+                      src={getDirectImageUrl(vehicle.photoUrl)} 
                       alt={vehicle.plate} 
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=600';
-                      }}
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
@@ -418,17 +440,15 @@ export const VehiclesList = ({
                   </div>
 
                   {/* Fuel & Tax Due info */}
-                  <div className="text-[11px] text-slate-500 space-y-1">
+                  <div className="text-[11px] text-slate-500 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span>⛽ {vehicle.fuelType}</span>
                       <span>ปี {vehicle.year} • สี{vehicle.color}</span>
                     </div>
-                    {vehicle.taxDueDate && (
-                      <div className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
-                        <FileText className="w-3 h-3 text-amber-600" />
-                        <span>วันครบกำหนดภาษี/พ.ร.บ.: <strong>{vehicle.taxDueDate}</strong></span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5 text-[10px] text-amber-800 bg-amber-50/80 border border-amber-200/50 px-2.5 py-1 rounded-lg">
+                      <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>วันต่อภาษี/พ.ร.บ.: {vehicle.taxDueDate ? <strong>{formatThaiDate(vehicle.taxDueDate)}</strong> : <span className="text-slate-400 font-normal">ยังไม่ได้ระบุ</span>}</span>
+                    </div>
                   </div>
 
                 </div>
@@ -498,28 +518,44 @@ export const VehiclesList = ({
                   รูปภาพรถ
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="w-24 h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                    {photoUrl ? (
-                      <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="w-24 h-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 relative">
+                    {isProcessingPhoto ? (
+                      <div className="flex flex-col items-center justify-center text-blue-600 gap-1">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-[9px]">บีบอัดภาพ...</span>
+                      </div>
+                    ) : photoUrl ? (
+                      <img src={getDirectImageUrl(photoUrl)} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <VehicleIcon type={type} className="w-8 h-8 text-slate-300" />
                     )}
                   </div>
 
                   <div className="flex-1 space-y-1">
-                    <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer transition">
-                      <Camera className="w-4 h-4" />
-                      <span>ถ่ายภาพ / เลือกรูป</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handlePhotoSelect}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer transition">
+                        <Camera className="w-4 h-4" />
+                        <span>{photoUrl ? 'เปลี่ยนรูปภาพ' : 'ถ่ายภาพ / เลือกรูป'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoSelect}
+                          className="hidden"
+                          disabled={isProcessingPhoto}
+                        />
+                      </label>
+                      {photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => { setPhotoUrl(''); setPhotoFile(null); }}
+                          className="px-2.5 py-1.5 rounded-xl text-red-600 hover:bg-red-50 text-xs font-semibold transition"
+                        >
+                          ลบรูป
+                        </button>
+                      )}
+                    </div>
                     <p className="text-[10px] text-slate-400">
-                      รองรับภาพถ่ายจากมือถือ
+                      {isProcessingPhoto ? '⚡ กำลังปรับขนาดรูปให้อัตโนมัติ...' : 'รองรับรูปถ่ายจากมือถือ (ระบบลดขนาดภาพให้อัตโนมัติ)'}
                     </p>
                   </div>
                 </div>

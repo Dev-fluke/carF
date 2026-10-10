@@ -54,7 +54,23 @@ export const getVehicles = () => {
 };
 
 export const saveVehicles = (vehicles) => {
-  localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(vehicles));
+  try {
+    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(vehicles));
+  } catch (err) {
+    console.warn('Quota error in saveVehicles, trimming large base64 photos:', err);
+    try {
+      // Strip base64 photos exceeding 150KB if localStorage quota is tight
+      const compactVehicles = vehicles.map(v => {
+        if (v.photoUrl && v.photoUrl.startsWith('data:') && v.photoUrl.length > 150000) {
+          return { ...v, photoUrl: '' };
+        }
+        return v;
+      });
+      localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(compactVehicles));
+    } catch (innerErr) {
+      console.error('Failed to save vehicles to storage:', innerErr);
+    }
+  }
 };
 
 export const addOrUpdateVehicle = (vehicle) => {
