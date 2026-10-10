@@ -31,7 +31,6 @@ export const Navbar = ({
   onSelectVehicle
 }) => {
   const navItems = [
-    { id: 'dashboard', label: 'หน้าแรก', mobileLabel: 'หน้าแรก', icon: Home },
     { id: 'vehicles', label: 'รถของฉัน', mobileLabel: 'รถของฉัน', icon: Car, count: vehicles.length },
     { 
       id: 'maintenance', 
@@ -53,20 +52,15 @@ export const Navbar = ({
             {/* Logo & App Title */}
             <div 
               className="flex items-center gap-2.5 cursor-pointer select-none active:scale-95 transition" 
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => setActiveTab('vehicles')}
             >
               <div className="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2 rounded-xl shadow-md flex items-center justify-center">
                 <Car className="w-5 h-5 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-blue-200 bg-clip-text text-transparent">
-                    My Garage
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                    สมุดบันทึกดูแลรถ
-                  </span>
-                </div>
+                <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-blue-200 bg-clip-text text-transparent">
+                  My Garage
+                </span>
               </div>
             </div>
 
@@ -140,7 +134,7 @@ export const Navbar = ({
 
       {/* Mobile Bottom Navigation Bar (Fixed at bottom for thumb-friendly mobile control) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/80 px-2 py-1.5 pb-safe shadow-2xl">
-        <div className="grid grid-cols-4 gap-1 max-w-md mx-auto">
+        <div className="grid grid-cols-3 gap-1 max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;

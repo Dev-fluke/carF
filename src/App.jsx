@@ -10,14 +10,13 @@ import {
 } from './services/storageService';
 import { fetchGoogleSheetsData } from './services/googleService';
 import { Navbar } from './components/Navbar';
-import { Dashboard } from './components/Dashboard';
 import { MileageTracker } from './components/MileageTracker';
 import { MaintenanceManager } from './components/MaintenanceManager';
 import { VehiclesList } from './components/VehiclesList';
 import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | vehicles | maintenance | mileage
+  const [activeTab, setActiveTab] = useState('vehicles'); // vehicles | maintenance | mileage
   const [vehicles, setVehicles] = useState(() => getVehicles());
   const [inspections, setInspections] = useState(() => getInspections());
   const [mileageLogs, setMileageLogs] = useState(() => getMileageLogs());
@@ -80,7 +79,7 @@ export function App() {
 
   const handleMileageSuccess = () => {
     refreshData();
-    setActiveTab('dashboard');
+    setActiveTab('vehicles');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -138,25 +137,6 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-        
-        {activeTab === 'dashboard' && (
-          <Dashboard
-            vehicles={vehicles}
-            inspections={inspections}
-            mileageLogs={mileageLogs}
-            onNavigate={(tab) => {
-              setActiveTab(tab);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onOpenQuickMileage={(veh) => {
-              setSelectedVehicleForMileage(veh?.id || null);
-              setActiveTab('mileage');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onOpenAddVehicle={handleOpenAddVehicle}
-            onServiceVehicle={handleMaintenanceVehicle}
-          />
-        )}
 
         {activeTab === 'vehicles' && (
           <VehiclesList
