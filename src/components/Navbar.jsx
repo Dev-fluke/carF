@@ -32,17 +32,15 @@ export const Navbar = ({
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'หน้าแรก', mobileLabel: 'หน้าแรก', icon: Home },
-    { id: 'vehicles', label: 'โรงรถของฉัน', mobileLabel: 'รถของฉัน', icon: Car, count: vehicles.length },
-    { id: 'inspect', label: 'ตรวจสภาพ', mobileLabel: 'ตรวจสภาพ', icon: ClipboardCheck },
-    { id: 'mileage', label: 'ไมล์ & น้ำมัน', mobileLabel: 'ไมล์/น้ำมัน', icon: Fuel },
+    { id: 'vehicles', label: 'รถของฉัน', mobileLabel: 'รถของฉัน', icon: Car, count: vehicles.length },
     { 
       id: 'maintenance', 
-      label: 'แจ้งเตือนดูแลรถ', 
-      mobileLabel: 'ดูแลรถ',
+      label: 'รายการซ่อมบำรุง', 
+      mobileLabel: 'ซ่อมบำรุง',
       icon: Wrench,
       badge: alertsCount > 0 ? alertsCount : null 
     },
-    { id: 'history', label: 'ประวัติตรวจ', mobileLabel: 'ประวัติ', icon: History }
+    { id: 'mileage', label: 'ไมล์ & น้ำมัน', mobileLabel: 'ไมล์/น้ำมัน', icon: Fuel }
   ];
 
   return (
@@ -142,8 +140,8 @@ export const Navbar = ({
 
       {/* Mobile Bottom Navigation Bar (Fixed at bottom for thumb-friendly mobile control) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/80 px-2 py-1.5 pb-safe shadow-2xl">
-        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
-          {navItems.slice(0, 5).map((item) => {
+        <div className="grid grid-cols-4 gap-1 max-w-md mx-auto">
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (

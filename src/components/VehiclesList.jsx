@@ -464,8 +464,8 @@ export const VehiclesList = ({
                       : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
                   }`}
                 >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>ตรวจสภาพ</span>
+                  <Wrench className="w-3.5 h-3.5" />
+                  <span>รายการซ่อมบำรุง</span>
                 </button>
                 <button
                   onClick={() => onLogMileage(vehicle)}

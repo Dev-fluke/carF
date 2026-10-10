@@ -278,29 +278,29 @@ export const Dashboard = ({
                 </span>
               </div>
 
-              {/* Last Inspection Score */}
+              {/* Custom Maintenance Overview Card */}
               <div 
-                onClick={() => onNavigate('history')}
-                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1 cursor-pointer hover:bg-slate-100 transition"
+                onClick={() => onNavigate('maintenance')}
+                className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-100 space-y-1 cursor-pointer hover:bg-blue-100/70 transition"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-                    <ClipboardCheck className="w-3.5 h-3.5 text-blue-500" />
-                    <span>ตรวจสภาพล่าสุด</span>
+                  <div className="flex items-center gap-1.5 text-blue-900 text-[11px] font-bold">
+                    <Wrench className="w-3.5 h-3.5 text-blue-600" />
+                    <span>รายการซ่อมบำรุง</span>
                   </div>
-                  <ChevronRight className="w-3 h-3 text-slate-400" />
+                  <ChevronRight className="w-3.5 h-3.5 text-blue-500" />
                 </div>
-                <div className="font-extrabold text-slate-900 text-sm">
-                  {lastInspection ? (
-                    <span className={lastInspection.overallResult === 'PASS' ? 'text-emerald-600' : 'text-amber-600'}>
-                      {lastInspection.overallResult === 'PASS' ? '✓ ผ่านสมบูรณ์' : '⚠️ มีจุดควรซ่อม'}
-                    </span>
+                <div className="font-extrabold text-blue-950 text-sm">
+                  {activeVehicle.status === 'overdue' ? (
+                    <span className="text-red-600">⚠️ มีรายการเกินกำหนด</span>
+                  ) : activeVehicle.status === 'due_soon' ? (
+                    <span className="text-amber-600">⏳ ใกล้ถึงรอบเช็ค</span>
                   ) : (
-                    <span className="text-slate-500">ยังไม่เคยตรวจ</span>
+                    <span className="text-emerald-700">✓ ดูแลตามระยะ</span>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-400 block truncate">
-                  {lastInspection ? `${String(lastInspection.inspectionDate || '').slice(0, 10)} (ผ่าน ${lastInspection.passedCount || 0} ข้อ)` : 'แตะเพื่อเริ่มตรวจ'}
+                <span className="text-[10px] text-blue-700 block truncate">
+                  แตะเพื่อเปิดเช็คลิสต์ & คำนวณรอบถ่าย
                 </span>
               </div>
 
@@ -317,20 +317,20 @@ export const Dashboard = ({
           เมนูด่วนสำหรับคันนี้
         </span>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           
-          {/* 1. Inspect */}
+          {/* 1. Maintenance Tracker */}
           <button
-            onClick={() => onInspectVehicle(activeVehicle)}
+            onClick={() => onServiceVehicle(activeVehicle)}
             className="p-4 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-98 text-white shadow-lg shadow-blue-600/20 text-left transition flex flex-col justify-between h-28"
           >
             <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-              <ClipboardCheck className="w-5 h-5 text-white" />
+              <Wrench className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-bold text-sm leading-tight">ตรวจสภาพรถ</div>
+              <div className="font-bold text-sm leading-tight">รายการซ่อมบำรุง</div>
               <div className="text-[11px] text-blue-100 mt-0.5">
-                {isBike ? 'เช็คโซ่ ยาง เบรก ไฟ' : 'เช็คของเหลว ยาง ไฟ แอร์'}
+                น้ำมันเครื่อง กรอง หัวเทียน เบรก
               </div>
             </div>
           </button>
@@ -344,39 +344,23 @@ export const Dashboard = ({
               <Fuel className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-bold text-sm leading-tight">เติมน้ำมัน / ลงไมล์</div>
+              <div className="font-bold text-sm leading-tight">ลงไมล์ / เติมน้ำมัน</div>
               <div className="text-[11px] text-emerald-100 mt-0.5">
                 บันทึกเลขไมล์ & ค่าน้ำมัน
               </div>
             </div>
           </button>
 
-          {/* 3. Service Log */}
-          <button
-            onClick={() => onServiceVehicle(activeVehicle)}
-            className="p-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-98 text-white shadow-md text-left transition flex flex-col justify-between h-28"
-          >
-            <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400">
-              <Wrench className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-bold text-sm leading-tight">บันทึกเข้าศูนย์</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">
-                เปลี่ยนถ่ายของเหลว / ค่าซ่อม
-              </div>
-            </div>
-          </button>
-
-          {/* 4. My Garage Details */}
+          {/* 3. My Garage Details */}
           <button
             onClick={() => onNavigate('vehicles')}
-            className="p-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 active:scale-98 text-slate-800 text-left transition flex flex-col justify-between h-28 shadow-xs"
+            className="p-4 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 active:scale-98 text-slate-800 text-left transition flex flex-col justify-between h-28 shadow-xs col-span-2 sm:col-span-1"
           >
-            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-blue-600">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
               <Car className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-bold text-sm leading-tight">จัดการข้อมูลรถ</div>
+              <div className="font-bold text-sm leading-tight">จัดการรถของฉัน</div>
               <div className="text-[11px] text-slate-500 mt-0.5">
                 ดูรถทั้งหมดในบ้าน ({vehicles.length} คัน)
               </div>

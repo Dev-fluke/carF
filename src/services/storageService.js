@@ -251,9 +251,119 @@ export const clearAllLocalData = () => {
   saveVehicles([]);
   saveInspections([]);
   saveMileageLogs([]);
+  saveCustomMaintenanceItems([]);
   // Also clean old v1 keys if any
   localStorage.removeItem('via_vehicles_v1');
   localStorage.removeItem('via_inspections_v1');
   localStorage.removeItem('via_mileage_logs_v1');
   return { vehicles: [], inspections: [], mileageLogs: [] };
 };
+
+// ==========================================
+// Custom Maintenance Items (หน้าใส่รายการซ่อมบำรุงเอง)
+// ==========================================
+const CUSTOM_MAINT_KEY = 'mg_custom_maintenance_items_v2';
+
+export const DEFAULT_CAR_MAINTENANCE_TEMPLATES = [
+  { name: 'เปลี่ยนถ่ายน้ำมันเครื่อง & ไส้กรอง', intervalKm: 10000, category: 'fluids', icon: 'Droplet' },
+  { name: 'เปลี่ยนกรองอากาศ (Air Filter)', intervalKm: 20000, category: 'filters', icon: 'Wind' },
+  { name: 'เปลี่ยนกรองแอร์ (Cabin Filter)', intervalKm: 20000, category: 'filters', icon: 'Wind' },
+  { name: 'เปลี่ยนกรองโซล่า / กรองน้ำมันเชื้อเพลิง', intervalKm: 20000, category: 'filters', icon: 'Fuel' },
+  { name: 'เปลี่ยนถ่ายน้ำมันเกียร์', intervalKm: 40000, category: 'fluids', icon: 'Droplet' },
+  { name: 'สลับยาง & ถ่วงล้อ', intervalKm: 10000, category: 'tires', icon: 'Disc' },
+  { name: 'เปลี่ยนผ้าเบรก (หน้า/หลัง)', intervalKm: 40000, category: 'brakes', icon: 'Disc' },
+  { name: 'เปลี่ยนหัวเทียน', intervalKm: 40000, category: 'engine', icon: 'Zap' },
+  { name: 'เปลี่ยนแบตเตอรี่', intervalKm: 50000, category: 'battery', icon: 'Zap' }
+];
+
+export const DEFAULT_BIKE_MAINTENANCE_TEMPLATES = [
+  { name: 'เปลี่ยนถ่ายน้ำมันเครื่อง', intervalKm: 3000, category: 'fluids', icon: 'Droplet' },
+  { name: 'เปลี่ยนถ่ายน้ำมันเฟืองท้าย', intervalKm: 6000, category: 'fluids', icon: 'Droplet' },
+  { name: 'เปลี่ยนไส้กรองอากาศ', intervalKm: 12000, category: 'filters', icon: 'Wind' },
+  { name: 'เปลี่ยนหัวเทียน', intervalKm: 10000, category: 'engine', icon: 'Zap' },
+  { name: 'ตรวจเช็ค / เปลี่ยนสายพาน หรือ โซ่-สเตอร์', intervalKm: 15000, category: 'drivetrain', icon: 'Cog' },
+  { name: 'เปลี่ยนผ้าเบรก', intervalKm: 15000, category: 'brakes', icon: 'Disc' },
+  { name: 'เปลี่ยนยางนอก / ใน', intervalKm: 20000, category: 'tires', icon: 'Disc' }
+];
+
+export const getCustomMaintenanceItems = (vehicleId = null) => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_MAINT_KEY);
+    const items = raw ? JSON.parse(raw) : [];
+    if (vehicleId) {
+      return items.filter(it => it.vehicleId === vehicleId);
+    }
+    return items;
+  } catch (e) {
+    console.error('Failed to get custom maintenance items', e);
+    return [];
+  }
+};
+
+export const saveCustomMaintenanceItems = (items) => {
+  try {
+    localStorage.setItem(CUSTOM_MAINT_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.error('Failed to save custom maintenance items', e);
+  }
+};
+
+export const addOrUpdateCustomMaintenanceItem = (item) => {
+  const allItems = getCustomMaintenanceItems();
+  const lastMileage = Number(item.lastMileage) || 0;
+  const intervalKm = Number(item.intervalKm) || 10000;
+  // Auto calculate next target mileage
+  const nextMileage = lastMileage + intervalKm;
+
+  const itemToSave = {
+    ...item,
+    id: item.id || `c-maint-${Date.now()}`,
+    lastMileage,
+    intervalKm,
+    nextMileage,
+    updatedAt: new Date().toISOString()
+  };
+
+  const idx = allItems.findIndex(i => i.id === itemToSave.id);
+  let updated;
+  if (idx >= 0) {
+    updated = [...allItems];
+    updated[idx] = itemToSave;
+  } else {
+    updated = [itemToSave, ...allItems];
+  }
+  saveCustomMaintenanceItems(updated);
+  return itemToSave;
+};
+
+export const deleteCustomMaintenanceItem = (itemId) => {
+  const allItems = getCustomMaintenanceItems();
+  const updated = allItems.filter(i => i.id !== itemId);
+  saveCustomMaintenanceItems(updated);
+  return updated;
+};
+
+export const recordCustomMaintenanceDone = (itemId, doneData) => {
+  const allItems = getCustomMaintenanceItems();
+  const item = allItems.find(i => i.id === itemId);
+  if (!item) return null;
+
+  const doneMileage = Number(doneData.mileage) || Number(item.nextMileage) || 0;
+  const intervalKm = Number(item.intervalKm) || 10000;
+  const newNextMileage = doneMileage + intervalKm;
+
+  const updatedItem = {
+    ...item,
+    lastMileage: doneMileage,
+    nextMileage: newNextMileage,
+    lastDoneDate: doneData.date || new Date().toISOString().split('T')[0],
+    lastCostBaht: Number(doneData.costBaht) || 0,
+    lastNotes: doneData.notes || '',
+    updatedAt: new Date().toISOString()
+  };
+
+  const updatedList = allItems.map(i => i.id === itemId ? updatedItem : i);
+  saveCustomMaintenanceItems(updatedList);
+  return updatedItem;
+};
+

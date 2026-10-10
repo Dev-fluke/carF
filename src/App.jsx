@@ -11,24 +11,21 @@ import {
 import { fetchGoogleSheetsData } from './services/googleService';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
-import { InspectionForm } from './components/InspectionForm';
 import { MileageTracker } from './components/MileageTracker';
-import { MaintenanceAlerts } from './components/MaintenanceAlerts';
+import { MaintenanceManager } from './components/MaintenanceManager';
 import { VehiclesList } from './components/VehiclesList';
-import { InspectionHistory } from './components/InspectionHistory';
 import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | inspect | mileage | maintenance | vehicles | history
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | vehicles | maintenance | mileage
   const [vehicles, setVehicles] = useState(() => getVehicles());
   const [inspections, setInspections] = useState(() => getInspections());
   const [mileageLogs, setMileageLogs] = useState(() => getMileageLogs());
   const [gasConfig, setGasConfig] = useState(() => getGasConfig());
 
   // Navigation context states
-  const [selectedVehicleForInspect, setSelectedVehicleForInspect] = useState(null);
   const [selectedVehicleForMileage, setSelectedVehicleForMileage] = useState(null);
-  const [selectedVehicleForService, setSelectedVehicleForService] = useState(null);
+  const [selectedVehicleForMaintenance, setSelectedVehicleForMaintenance] = useState(null);
 
   // Modals
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
@@ -63,20 +60,14 @@ export function App() {
   ).length;
 
   // Handlers
-  const handleInspectVehicle = (vehicle) => {
-    setSelectedVehicleForInspect(vehicle?.id || null);
-    setActiveTab('inspect');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleLogMileage = (vehicle) => {
     setSelectedVehicleForMileage(vehicle?.id || null);
     setActiveTab('mileage');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleServiceVehicle = (vehicle) => {
-    setSelectedVehicleForService(vehicle);
+  const handleMaintenanceVehicle = (vehicle) => {
+    setSelectedVehicleForMaintenance(vehicle?.id || null);
     setActiveTab('maintenance');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -87,19 +78,7 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleInspectionSuccess = () => {
-    refreshData();
-    setActiveTab('history');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleMileageSuccess = () => {
-    refreshData();
-    setActiveTab('dashboard');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleServiceCompleted = () => {
     refreshData();
     setActiveTab('dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -175,20 +154,25 @@ export function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onOpenAddVehicle={handleOpenAddVehicle}
-            onInspectVehicle={handleInspectVehicle}
-            onServiceVehicle={handleServiceVehicle}
+            onServiceVehicle={handleMaintenanceVehicle}
           />
         )}
 
-        {activeTab === 'inspect' && (
-          <InspectionForm
+        {activeTab === 'vehicles' && (
+          <VehiclesList
             vehicles={vehicles}
-            selectedVehicleId={selectedVehicleForInspect}
-            onSuccess={handleInspectionSuccess}
-            onCancel={() => {
-              setActiveTab('dashboard');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            onInspect={handleMaintenanceVehicle}
+            onLogMileage={handleLogMileage}
+            onRefresh={refreshData}
+            openAddOnMount={openAddVehicleOnMount}
+          />
+        )}
+
+        {activeTab === 'maintenance' && (
+          <MaintenanceManager
+            vehicles={vehicles}
+            initialVehicleId={selectedVehicleForMaintenance}
+            onVehicleUpdated={refreshData}
           />
         )}
 
@@ -198,31 +182,6 @@ export function App() {
             mileageLogs={mileageLogs}
             selectedVehicleId={selectedVehicleForMileage}
             onSuccess={handleMileageSuccess}
-          />
-        )}
-
-        {activeTab === 'maintenance' && (
-          <MaintenanceAlerts
-            vehicles={vehicles}
-            onServiceCompleted={handleServiceCompleted}
-            initialSelectedVehicle={selectedVehicleForService}
-          />
-        )}
-
-        {activeTab === 'vehicles' && (
-          <VehiclesList
-            vehicles={vehicles}
-            onInspect={handleInspectVehicle}
-            onLogMileage={handleLogMileage}
-            onRefresh={refreshData}
-            openAddOnMount={openAddVehicleOnMount}
-          />
-        )}
-
-        {activeTab === 'history' && (
-          <InspectionHistory
-            inspections={inspections}
-            vehicles={vehicles}
           />
         )}
 
